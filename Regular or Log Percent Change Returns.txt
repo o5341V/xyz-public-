@@ -1,0 +1,151 @@
+//@version=5
+// Return
+// This Script displays Regular or Log Returns (percentage or absolute) as either a line or histogram and labels the current bar. 
+// Additionally, an "ArcTan" method is available which allows the slope of a line that crosses zero to be displayed.
+// If a moving average of price is used as the source, the result is analogous to a strength index
+// Other options include smoothing by converting to an EMA of returns,
+// Bollinger Bands with SMA for the basis_length, and Standard Deviation for the Width (can be hidden).  
+// When the BB Basis is positive the bands appear green, and when negative they are red.
+// if you set the BB basis to one, the color of the BB histogram will indicate the slope only. 
+// Option to display wicks and bands with wicks added.
+// Option to Magnify the basis added (display only)
+// Option to display two EMAs of the basis added.
+
+indicator(title='Return', shorttitle='Return')
+
+//  Inputs
+[h, l, c] = request.security(syminfo.tickerid, timeframe.period, [high, low, close])
+src = input(title='Source', defval=close)
+plot_type = input.string(title='Plot Type', defval='Histogram', options=['Histogram', 'Line'])
+display_absolute = input(title='Use Absolute Values for Plot', defval=false)
+ret_type = input.string(title='Return Type', defval='Regular', options=['Regular', 'Log', 'ArcTan'])
+return_ma = input.string(title='Return MA Type', defval='EMA', options=['EMA', 'SMA', 'WMA', 'RMA', 'SWMA', 'VWMA', 'Median'])
+return_ma_basis_length = input.int(title='Return MA Length', defval=1, minval=1)
+
+// Return  
+[return_1, return_high, return_low] = if ret_type == 'Regular'
+    [ta.change(src) / src[1] * 100, (h - src[1]) / src[1] * 100, (l - src[1]) / src[1] * 100]
+else if ret_type == 'Log'  // Log Return
+    [math.log(src / src[1]) * 100, math.log(h / src[1]) * 100, math.log(l / src[1]) * 100]
+else if ret_type == 'ArcTan'
+    [math.todegrees(math.atan(src - nz(src[1]))) / 1.8, math.todegrees(math.atan(h - nz(src[1]))) / 1.8, math.todegrees(math.atan(l - nz(src[1]))) / 1.8]
+
+return_1 := if return_ma == 'EMA'
+    ta.ema(return_1, return_ma_basis_length)
+else if return_ma == 'SMA'
+    ta.sma(return_1, return_ma_basis_length)
+else if return_ma == 'WMA'
+    ta.wma(return_1, return_ma_basis_length)
+else if return_ma == 'RMA'
+    ta.rma(return_1, return_ma_basis_length)
+else if return_ma == 'SWMA'
+    ta.swma(return_1)
+else if return_ma == 'VWMA'
+    ta.vwma(return_1, return_ma_basis_length)
+else if return_ma == 'Median'
+    ta.median(return_1, return_ma_basis_length)
+
+return_high := if return_ma == 'EMA'
+    ta.ema(return_high, return_ma_basis_length)
+else if return_ma == 'SMA'
+    ta.sma(return_high, return_ma_basis_length)
+else if return_ma == 'WMA'
+    ta.wma(return_high, return_ma_basis_length)
+else if return_ma == 'RMA'
+    ta.rma(return_high, return_ma_basis_length)
+else if return_ma == 'SWMA'
+    ta.swma(return_high)
+else if return_ma == 'VWMA'
+    ta.vwma(return_high, return_ma_basis_length)
+else if return_ma == 'Median'
+    ta.median(return_high, return_ma_basis_length)
+
+return_low := if return_ma == 'EMA'
+    ta.ema(return_low, return_ma_basis_length)
+else if return_ma == 'SMA'
+    ta.sma(return_low, return_ma_basis_length)
+else if return_ma == 'WMA'
+    ta.wma(return_low, return_ma_basis_length)
+else if return_ma == 'RMA'
+    ta.rma(return_low, return_ma_basis_length)
+else if return_ma == 'SWMA'
+    ta.swma(return_low)
+else if return_ma == 'VWMA'
+    ta.vwma(return_low, return_ma_basis_length)
+else if return_ma == 'Median'
+    ta.median(return_low, return_ma_basis_length)
+
+absolute_return = ret_type == 'ArcTan' ? close[1] * src / 100 : src[1] * return_1 / 100
+absolute_return_high = ret_type == 'ArcTan' ? close[1] * return_high / 100 : src[1] * return_high / 100
+absolute_return_low = ret_type == 'ArcTan' ? close[1] * return_low / 100 : src[1] * return_low / 100
+//  Label
+label_X_Loc = time_close + (time_close - time_close[1]) * 2  // Set Label offset
+label_text = str.tostring(return_1, '#.##') + '% (' + str.tostring(absolute_return, '#.##') + ')'  // Get Label text
+label = label.new(label_X_Loc, display_absolute ? absolute_return : return_1, label_text, xloc.bar_time, yloc.price, style=label.style_label_left)
+label.delete(label[1])  // Delete Previous Label
+
+//  Basis 
+basis_type = input.string(title='Basis Type', defval='SMA', options=['SMA', 'EMA', 'WMA', 'RMA', 'SWMA', 'VWMA', 'Median'])
+basis_length = input.int(20, minval=1, title='Basis Length')
+bands_type = input.string(title='Bands Type', defval='Std Dev', options=['Std Dev', 'Std Dev with Wicks', 'ATR'])
+mult = input.float(2, minval=0.1, maxval=500, title='Bands Multiple')
+hide_wicks = input(title='Hide Wicks ', defval=false)
+hide_bands = input(title='Hide Bands ', defval=false)
+hide_basis = input(title='Hide Basis ', defval=false)
+show_basis_emas = input(title='Show Basis EMAs ', defval=true)
+basis_ema1_length = input.int(10, minval=1, title='Basis EMA1')
+basis_ema2_length = input.int(20, minval=1, title='Basis EMA2')
+basis_mag = input.int(title='Magnify Basis (Display Only)', defval=4, minval=1)
+
+basis = if basis_type == 'SMA'
+    ta.sma(display_absolute ? absolute_return : return_1, basis_length)
+else if basis_type == 'EMA'
+    ta.ema(display_absolute ? absolute_return : return_1, basis_length)
+else if basis_type == 'WMA'
+    ta.wma(display_absolute ? absolute_return : return_1, basis_length)
+else if basis_type == 'RMA'
+    ta.rma(display_absolute ? absolute_return : return_1, basis_length)
+else if basis_type == 'SWMA'
+    ta.swma(display_absolute ? absolute_return : return_1)
+else if basis_type == 'VWMA'
+    ta.vwma(display_absolute ? absolute_return : return_1, basis_length)
+else if basis_type == 'Median'
+    ta.median(display_absolute ? absolute_return : return_1, basis_length)
+
+//  EMAs
+basis_ema1 = ta.ema(basis, basis_ema1_length)
+basis_ema2 = ta.ema(basis, basis_ema2_length)
+
+//  Bands
+
+dev = if bands_type == 'Std Dev'
+    mult * ta.stdev(display_absolute ? absolute_return : return_1, basis_length)
+else if bands_type == 'ATR'
+    mult * (display_absolute ? ta.atr(basis_length) : 100 * ta.atr(basis_length) / close)
+dev_wick_up = if bands_type == 'Std Dev with Wicks'
+    mult * ta.stdev(display_absolute ? absolute_return_high : return_high, basis_length)
+dev_wick_down = if bands_type == 'Std Dev with Wicks'
+    mult * ta.stdev(display_absolute ? absolute_return_low : return_low, basis_length)
+
+upper = bands_type == 'Std Dev with Wicks' ? basis + dev_wick_up : basis + dev
+lower = bands_type == 'Std Dev with Wicks' ? basis - dev_wick_down : basis - dev
+
+
+//  Plots
+plot(title='% Return', series=display_absolute ? absolute_return : return_1, style=plot_type == 'Line' ? plot.style_line : plot.style_histogram, linewidth=plot_type == 'Line' ? 1 : 5, color=plot_type == 'Line' ? color.rgb(33, 150, 243) : return_1 > 0 ? color.rgb(76, 175, 80, 50) : color.rgb(255, 82, 82, 50))
+plot(title='% Return Wick Highs', series=hide_wicks ? display_absolute ? absolute_return : return_1 : display_absolute ? absolute_return_high : return_high, style=plot_type == 'Line' ? plot.style_line : plot.style_histogram, linewidth=plot_type == 'Line' ? 1 : 1, color=plot_type == 'Line' ? color.rgb(192, 192, 192, 50) : return_1 > 0 ? color.rgb(204, 204, 0, 40) : color.rgb(255, 153, 153, 60))
+plot(title='% Return Wick Lows', series=hide_wicks ? display_absolute ? absolute_return : return_1 : display_absolute ? absolute_return_low : return_low, style=plot_type == 'Line' ? plot.style_line : plot.style_histogram, linewidth=plot_type == 'Line' ? 1 : 1, color=plot_type == 'Line' ? color.rgb(192, 192, 192, 50) : return_1 > 0 ? color.rgb(178, 255, 102, 60) : color.rgb(204, 0, 0, 60))
+
+//ubb = plot(title='Upper Band', series=upper, style=plot.style_line, color=hide_bands ? math.abs(upper) > math.abs(lower) ? color.rgb(76, 175, 80, 100) : color.rgb(255, 82, 82, 100) : math.abs(upper) > math.abs(lower) ? color.rgb(76, 175, 80, 10) : color.rgb(255, 82, 82, 10))
+//lbb = plot(title='Lower Band', series=lower, style=plot.style_line, color=hide_bands ? math.abs(upper) > math.abs(lower) ? color.rgb(76, 175, 80, 100) : color.rgb(255, 82, 82, 100) : math.abs(upper) > math.abs(lower) ? color.rgb(76, 175, 80, 10) : color.rgb(255, 82, 82, 10))
+//basis_plot = plot(title='Basis', series=basis_mag * basis, style=plot.style_line, color=hide_basis ? color.rgb(255, 255, 255, 100) : color.rgb(255, 255, 255, 25))
+//basis_ema1_plot = plot(title='Basis EMA 1', series=basis_mag * basis_ema1, style=plot.style_line, color=show_basis_emas ? color.rgb(51, 172, 255, 25) : color.rgb(51, 172, 255, 100))
+//basis_ema2_plot = plot(title='Basis EMA 2', series=basis_mag * basis_ema2, style=plot.style_line, color=show_basis_emas ? color.rgb(255, 235, 59, 25) : color.rgb(255, 235, 59, 100))
+//fill(ubb, lbb, title='Bands Fill', color=color.rgb(229, 255, 204, 90))
+hline(0, title='Zero Line', linestyle=hline.style_dotted, color=color.rgb(255, 255, 0, 55))
+
+
+SignalBelow = return_1 <= input.float(-4)
+plotshape(SignalBelow, color=color.white, style=shape.circle, location=location.bottom, size=size.tiny, textcolor=color.white, transp=10)
+SignalAbove = return_1 >= input.float(4)
+plotshape(SignalAbove, color=color.white, style=shape.circle, location=location.top, size=size.tiny, textcolor=color.white, transp=10)

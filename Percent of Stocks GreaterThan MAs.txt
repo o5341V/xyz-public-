@@ -1,0 +1,63 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Uni_ve12se
+
+//@version=4
+
+study("%", overlay=true)
+
+Stocks_20 = security("MMTW", "D", close)
+
+Stocks_50 = security("MMFI", "D", close)
+
+Stocks_200 = security("MMTH", "D", close)
+
+Avg = (Stocks_20 + Stocks_50 + Stocks_200) / 3
+
+NDX_50 = security("NDFI", "D", close)
+
+NDX_200 = security("NDTH", "D", close)
+
+plot(Stocks_20, "Stocks_20", color = color.yellow)
+plot(Stocks_50, "Stocks_50", color=color.new(#fb6e01,0)) 
+plot(Stocks_200, "Stocks_200", color=color.new(#ff0000,0)) 
+
+//plot(NDX_50, "NDX_50", color = color.red)
+//plot(NDX_200, "NDX_200", color = color.red)
+
+plot(Avg, "Avg", color=color.new(#ff0000,50))
+
+Stocks_20_Thresh = Stocks_20 < input(25)
+
+Stocks_50_Thresh = Stocks_50 < input(25)
+
+Stocks_200_Thresh = Stocks_200 < input(25)
+
+Avg_Thresh = Stocks_20_Thresh and Stocks_50_Thresh and Stocks_200_Thresh == true
+
+
+NDX_50_Thresh = NDX_50 < input(30)
+
+NDX_200_Thresh = NDX_200 < input(30)
+
+Sendit = Avg_Thresh[1] and close > close[1] == true
+
+//plotshape(Stocks_20_Thresh,"MMTW", style=shape.triangleup, location=location.bottom, size=size.tiny,color=color.new(#2962ff,75))
+
+//plotshape(Stocks_50_Thresh,"MMFI", style=shape.triangleup, location=location.bottom, size=size.tiny,color=color.new(#2962ff,25))
+
+//plotshape(Stocks_200_Thresh,"MMTH", style=shape.triangleup, location=location.bottom, size=size.tiny,color=color.new(#2962ff,0))
+
+//plotshape(Avg_Thresh,"Avg", style=shape.arrowup, location=location.bottom, size=size.tiny,color=color.new(#ffffff,0))
+
+plotshape(Sendit,"Avg", style=shape.triangleup, location=location.belowbar, size=size.tiny,color=color.new(#ffffff,0))
+
+//plotshape(NDX_50_Thresh,"NDFI", style=shape.triangleup, location=location.bottom, size=size.tiny,color=color.new(#ff0000,50))
+
+//plotshape(NDX_200_Thresh,"NDTH", style=shape.triangleup, location=location.bottom, size=size.tiny,color=color.new(#ff0000,50))
+
+
+//backgroundColour1 = ibm_15 < 10 ? color.black : na
+
+//bgcolor(color=backgroundColour1, transp=75, offset=-1)
+
+barcolor(Avg_Thresh ? color.red : Avg_Thresh[1] and close > close[1] ? color.white : color.black)

@@ -1,0 +1,121 @@
+
+//@version=5
+
+indicator("Rin-Din MtF Multi-length Percent Rank + Colorz", timeframe="240")
+
+//constants
+
+src = input(close, title="Source")
+
+// mtf
+
+displayMTF1 = input.bool(title="Display MTF 15?", defval=true)
+displayMTF2 = input.bool(title="Display MTF 30?", defval=true)
+displayMTF3 = input.bool(title="Display MTF 60?", defval=true)
+displayMTF4 = input.bool(title="Display MTF 120?", defval=true)
+displayMTF5 = input.bool(title="Display MTF 240?", defval=true)
+
+
+res1 = input.timeframe(title="Multi Timeframe 1:", defval="15")
+res2 = input.timeframe(title="Multi Timeframe 2:", defval="30")
+res3 = input.timeframe(title="Multi Timeframe 3:", defval="60")
+res4 = input.timeframe(title="Multi Timeframe 4:", defval="240")
+res5 = input.timeframe(title="Multi Timeframe 5:", defval="480")
+
+
+displayAVG1 = input.bool(title="Display Avg 1?", defval=true)
+displayAVG2 = input.bool(title="Display Avg 2?", defval=true)
+displayAVG3 = input.bool(title="Display Avg 3?", defval=true)
+displayAVG4 = input.bool(title="Display Avg 4?", defval=true)
+displayAVG5 = input.bool(title="Display Avg 5?", defval=true)
+
+
+displayAllAvgs = input.bool(title="Display All Avgs", defval=true)
+
+// indi
+
+
+//trigger = input(1.25)
+
+//n = input(252)
+
+// = math.log(close/close[1])
+//Rin = math.log(close/close[n])
+//Nin = (math.sum(math.abs(ri),n))/(math.abs(Rin)/n)
+//Din = math.log(Nin)/math.log(n)
+
+// func
+
+rindin(src, length) =>
+    ri = math.log(close/close[1])
+    Rin = math.log(close/close[length])
+    Nin = (math.sum(math.abs(ri),length))/(math.abs(Rin)/length)
+    Din = math.log(Nin)/math.log(length)
+
+// mtf
+
+mtfK1 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, 100)) : na
+mtfK11 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, 200)) : na
+mtfK111 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, 300)) : na
+mtfK1111 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, 400)) : na
+mtfK11111 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, 500)) : na
+
+mtfK2 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, 100)) : na
+mtfK22 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, 200)) : na
+mtfK222 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, 300)) : na
+mtfK2222 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, 400)) : na
+mtfK22222 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, 500)) : na
+
+mtfK3 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, 50)) : na
+mtfK33 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, 100)) : na
+mtfK333 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, 150)) : na
+mtfK3333 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, 200)) : na
+mtfK33333 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, 250)) : na
+
+mtfK4 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, 20)) : na
+mtfK44 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, 40)) : na
+mtfK444 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, 60)) : na
+mtfK4444 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, 80)) : na
+mtfK44444 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, 100)) : na
+
+mtfK5 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, 10)) : na
+mtfK55 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, 20)) : na
+mtfK555 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, 30)) : na
+mtfK5555 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, 40)) : na
+mtfK55555 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, 50)) : na
+
+//plot
+
+// Avgs etc
+
+Avg5 = displayAVG5 ? math.avg(mtfK5,mtfK55,mtfK555,mtfK5555,mtfK55555) : na
+Avg4 = displayAVG4 ? math.avg(mtfK4,mtfK44,mtfK444,mtfK4444,mtfK44444) : na
+Avg3 = displayAVG3 ? math.avg(mtfK3,mtfK33,mtfK333,mtfK3333,mtfK33333) : na
+Avg2 = displayAVG2 ? math.avg(mtfK2,mtfK22,mtfK222,mtfK2222,mtfK22222) : na
+Avg1 = displayAVG1 ? math.avg(mtfK1,mtfK11,mtfK111,mtfK1111,mtfK11111) : na
+
+GatheredAvgsCalc = math.avg(Avg1,Avg2,Avg3,Avg4,Avg5)
+
+perclen = input(252)
+
+GatheredAvgs = displayAllAvgs ? ta.percentrank(GatheredAvgsCalc, perclen) : na
+
+// plots
+
+//plot(Avg5, style=plot.style_stepline, color=color.green, linewidth=1)
+//plot(Avg4, style=plot.style_stepline, color=color.white, linewidth=1)
+//plot(Avg3, style=plot.style_stepline, color=color.yellow, linewidth=1)
+//plot(Avg2, style=plot.style_stepline, color=color.orange, linewidth=1)
+//plot(Avg1, style=plot.style_stepline, color=color.red, linewidth=1)
+
+plot(GatheredAvgs, style=plot.style_stepline, color=color.white, linewidth=1)
+
+//BarColorz = Avg1 and Avg2 and Avg3 and Avg4 and Avg5 <= trigger ? color.red : na //Plots
+
+//barcolor(BarColorz)
+
+perctrigger = input(1)
+
+BarColorz = GatheredAvgs <= perctrigger ? color.red : na // Percent Rank
+
+barcolor(BarColorz)

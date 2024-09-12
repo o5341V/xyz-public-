@@ -1,0 +1,49 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © user1928374560XYZ
+
+//@version=5
+indicator("My script")
+
+_length1 = input(10, title = "hma")
+_length2 = input(10, title = "linreg&fish")
+
+
+// Define the time series data
+data = close
+
+// Define the rate of change of the phase angle
+phase_velocity = (data - nz(data[1])) - (data[1] - nz(data[2]))
+
+// Define a smoothing factor for the phase velocity
+smooth_factor = 0.1
+
+// Define the mean and standard deviation of the phase velocity
+mean = ta.sma(phase_velocity, 20)
+stddev = ta.stdev(phase_velocity, 20)
+
+// Define the normalized phase velocity
+normalized_phase_velocity = (phase_velocity - mean) / stddev
+
+// Perform linear regression on normalized phase velocity
+reg = ta.linreg(normalized_phase_velocity, _length2, 0)
+smoother_reg = ta.hma(reg, _length1)
+
+//plot(reg, color=color.green, linewidth=2)
+//plot(smoother_reg, color=color.rgb(0, 38, 255), linewidth=2)
+
+f_fisher(_src, _window) =>
+    min_Median = ta.lowest(_src, _window)
+    max_Median = ta.highest(_src, _window)
+    temp = (_src - min_Median) / (max_Median - min_Median)
+    value = 0.0
+    value := .5 * 2 * ((temp - .5) + (.5 * nz(value[1])))
+    value1 = value >= .9999 ? .9999 : value <= -.9999 ? -.9999 : value
+    temp2 = (1 + value1) / (1 - value1)
+    fisher_Value = 0.0
+    fisher_Value := (.25 * math.log(temp2)) + (.5 * nz(fisher_Value[1]))
+    fisher_Value
+
+//  ||<••   END FISHER FUNCTION
+
+d = f_fisher(normalized_phase_velocity , _length2)
+plot(d)

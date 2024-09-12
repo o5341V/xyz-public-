@@ -1,0 +1,66 @@
+//@version=5
+indicator("Sectors above 50MA and 200MA")
+
+xlf = request.security("XLF", "D", close)
+xle = request.security("XLE", "D", close)
+vgt = request.security("VGT", "D", close)
+xlb = request.security("XLB", "D", close)
+xly = request.security("XLY", "D", close)
+xlp = request.security("XLP", "D", close)
+xlu = request.security("XLU", "D", close)
+xlv = request.security("XLV", "D", close)
+xli = request.security("XLI", "D", close)
+vnq = request.security("VNQ", "D", close)
+vox = request.security("VOX", "D", close)
+counter = 0
+counter2 = 0
+
+if xlf>ta.sma(xlf,200)
+    counter := counter + 1
+if xle>ta.sma(xle,200)
+    counter := counter + 1
+if vgt>ta.sma(vgt,200)
+    counter := counter + 1
+if xlb>ta.sma(xlb,200)
+    counter := counter + 1
+if xly>ta.sma(xly,200)
+    counter := counter + 1
+if xlp>ta.sma(xlp,200)
+    counter := counter + 1
+if xlu>ta.sma(xlu,200)
+    counter := counter + 1
+if xlv>ta.sma(xlv,200)
+    counter := counter + 1
+if xli>ta.sma(xli,200)
+    counter := counter + 1
+if vnq>ta.sma(vnq,200)
+    counter := counter + 1
+if vox>ta.sma(vox,200)
+    counter := counter + 1
+
+if xlf>ta.sma(xlf,50)
+    counter2 := counter2 + 1
+if xle>ta.sma(xle,50)
+    counter2 := counter2 + 1
+if vgt>ta.sma(vgt,50)
+    counter2 := counter2 + 1
+if xlb>ta.sma(xlb,50)
+    counter2 := counter2 + 1
+if xly>ta.sma(xly,50)
+    counter2 := counter2 + 1
+if xlp>ta.sma(xlp,50)
+    counter2 := counter2 + 1
+if xlu>ta.sma(xlu,50)
+    counter2 := counter2 + 1
+if xlv>ta.sma(xlv,50)
+    counter2 := counter2 + 1
+if xli>ta.sma(xli,50)
+    counter2 := counter2 + 1
+if vnq>ta.sma(vnq,50)
+    counter2 := counter2 + 1
+if vox>ta.sma(vox,50)
+    counter2 := counter2 + 1
+
+plot(counter,"Number of sectors above 200EMA")
+plot(counter2,"Number of sectors above 50EMA",color = color.red)
+

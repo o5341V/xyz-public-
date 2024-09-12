@@ -1,0 +1,26 @@
+//@version=2
+study(title = "SkR", shorttitle="SkR", precision=0, overlay=true)
+
+len = input(14, minval=1, title="Length")
+src = close
+up = rma(max(change(src), 0), len)
+down = rma(-min(change(src), 0), len)
+rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - (100 / (1 + up / down))
+
+//
+tunits = input(title="Included Trading Days", type=integer, defval=252)
+ma = input(title="Moving Average", type=integer, defval=5)
+
+sir = security ("SKEW", period, sma(close,ma))
+
+OB = rsi > input(70) and sir > input(130) == true
+OS = rsi < input(30) and sir < input(130) == true
+
+x = rsi(sir,len)
+
+plotshape(OB, "Down", style=shape.triangledown, location=location.abovebar, size=size.tiny, color=red)
+plotshape(OS, "Up", style=shape.triangleup, location=location.belowbar, size=size.tiny, color=#051aff)
+
+plot(x, title='x', style=line, linewidth=1, color=black)
+
+    

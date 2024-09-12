@@ -1,0 +1,214 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © user1928374560XYZ
+
+//@version=5
+indicator("smF")
+
+//// Displays ?
+
+dB1 = input(title='Display colors1?', defval=false)
+dB2 = input(title='Display colors2?', defval=false)
+
+displaysmF = input(title='Display smF?', defval=false)
+displayOBV = input(title='Display OBV?', defval=false)
+
+displaySPX = input(title='Display SPX?', defval=true)
+
+displayVIX = input(title='Display VIX?', defval=true)
+displayVvIX = input(title='Display VvIX?', defval=false)
+displayInvertedVIX = input(title='Display InvertedVIX?', defval=false)
+
+displayCombo = input(title='Display Combo?', defval=false)
+
+displayDifference1 = input(title='Display Difference1?', defval=false)
+displayDifference2 = input(title='Display Difference2?', defval=false)
+
+//// Securities
+
+cSPX = request.security("AMEX:SPY", timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on)
+oSPX = request.security("AMEX:SPY", timeframe.period, open, barmerge.gaps_on, barmerge.lookahead_on)
+
+cVix = request.security("TVC:VIX", timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on)
+oVix = request.security("TVC:VIX", timeframe.period, open, barmerge.gaps_on, barmerge.lookahead_on)
+
+cVvix = request.security("CBOE:VVIX", timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on)
+oVvix = request.security("CBOE:VVIX", timeframe.period, open, barmerge.gaps_on, barmerge.lookahead_on)
+
+cVixInv = request.security("1/TVC:VIX", timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on)
+oVixInv = request.security("1/TVC:VIX", timeframe.period, open, barmerge.gaps_on, barmerge.lookahead_on)
+
+//Non repainting security
+f_security(_symbol, _res, _src, _repaint) =>
+    request.security(_symbol, _res, _src[_repaint ? 0 : barstate.isrealtime ? 1 : 0])[_repaint ? 0 : barstate.isrealtime ? 0 : 1]
+
+///////////////////////////////////////////////////////////////////////////////////// Inflows Near Bell
+
+period = input.timeframe(title='Multi Timeframe 1:', defval='30')
+
+c = f_security(syminfo.tickerid, period, close, false) // (false) is for _repaint parameter
+o = f_security(syminfo.tickerid, period, open, false)
+h = f_security(syminfo.tickerid, period, high, false)
+l = f_security(syminfo.tickerid, period, low, false)
+v = f_security(syminfo.tickerid, period, volume, false)
+
+float todays_imbalance = 0.0
+todays_imbalance := v * (c - o) / (h - l)  // previously (log(c) - log(o)) * v * (o + c) / 2.0
+
+smFlow = 0.0
+smFlow := (nz(smFlow[1], 1) + todays_imbalance) 
+
+////////
+
+smFlowCurrent = smFlow
+smFlowPrevious = smFlow[1]
+
+LookbackFlow = input(9)
+
+countFlow    = 0
+
+for i = 0 to LookbackFlow
+    if (smFlowCurrent[i] > smFlowPrevious[i])
+        countFlow := countFlow + 1
+
+positiveFlowpercent = displaysmF ? (countFlow / LookbackFlow) * 100 : na
+plot(positiveFlowpercent, title="smF %", style=plot.style_line, color=color.blue)
+
+///////////////////////////////////////////////////////////////////////////////////// OBV
+
+o1 = ta.obv[1]
+h1 = ta.obv
+l1 = ta.obv[1]
+c1 = ta.obv
+
+var cumVol = 0.
+cumVol += nz(volume)
+if barstate.islast and cumVol == 0
+    runtime.error("No volume is provided by the data vendor.")
+src = close
+obv = ta.cum(math.sign(ta.change(src)) * volume)
+
+////////
+
+currentOBV = obv
+previousOBV = obv[1]
+
+LookbackOBV = input(9)
+
+countOBV    = 0
+
+for i = 0 to LookbackOBV
+    if (currentOBV[i] > previousOBV[i])
+        countOBV := countOBV + 1
+
+positiveOBVpercent = displayOBV ? (countOBV / LookbackOBV) * 100 : na
+plot(positiveOBVpercent, title="O %", style=plot.style_line, color=color.red)
+
+//////// SPX
+
+currentSPX = cSPX
+previousSPX = cSPX[1]
+
+LookbackSPX = input(9)
+
+countSPX   = 0
+
+for i = 0 to LookbackSPX
+    if (currentSPX[i] > previousSPX[i])
+        countSPX := countSPX + 1
+
+positiveSPXpercent = displaySPX ? (countSPX / LookbackSPX) * 100 : na
+plot(positiveSPXpercent, title="S %", style=plot.style_line, color=color.blue)
+
+//////// VIX Regular for Combo
+
+currentVix = cVix
+previousVix = cVix[1]
+
+LookbackVix = input(9)
+
+countVix   = 0
+
+for i = 0 to LookbackVix
+    if (currentVix[i] > previousVix[i])
+        countVix := countVix + 1
+
+positiveVIXpercent = displayVIX ? (countVix / LookbackVix) * 100 : na
+plot(positiveVIXpercent, title="V %", style=plot.style_line, color=color.red)
+
+//////// VVIX
+
+currentVvix = cVvix
+previousVvix = cVvix[1]
+
+LookbackVvix = input(9)
+
+countVvix   = 0
+
+for i = 0 to LookbackVvix
+    if (currentVvix[i] > previousVvix[i])
+        countVvix := countVvix + 1
+
+positiveVvIXpercent = displayVvIX ? (countVvix / LookbackVvix) * 100 : na
+plot(positiveVvIXpercent, title="Vv %", style=plot.style_line, color=color.red)
+
+//////// VIX Inverted
+
+currentVixInv = cVixInv
+previousVixInv = cVixInv[1]
+
+LookbackVixInv = input(9)
+
+countVixInv   = 0
+
+for i = 0 to LookbackVixInv
+    if (currentVixInv[i] > previousVixInv[i])
+        countVixInv := countVixInv + 1
+
+positiveVIXpercentInv = displayInvertedVIX ? (countVixInv / LookbackVixInv) * 100 : na
+plot(positiveVIXpercentInv, title="V Inv %", style=plot.style_line, color=color.red)
+
+//////////////////////////////////////////////////////////////////////////////////////// COMBO
+
+LookbackCombo = input(9)
+
+countCombo    = 0
+
+for i = 0 to LookbackCombo
+    if (currentSPX[i] > previousSPX[i] and currentVix[i] > previousVix[i]) //currentOBV[i] > previousOBV[i] and smFlowCurrent[i] > smFlowPrevious[i]
+        countCombo := countCombo + 1
+
+positiveComboPercent = displayCombo ? (countCombo / LookbackCombo) * 100 : na
+plot(positiveComboPercent, title="C %", style=plot.style_line, color=color.green)
+
+///////////////////////////////////////////////////////////////////////// New Boot Goofin'
+
+Difference1 = displayDifference1 ? (  positiveVIXpercent / positiveSPXpercent ) * 100 : na
+
+plot(Difference1, title="Difference1 %", style=plot.style_line, color=color.white)
+
+Difference2 = displayDifference2 ? (  positiveVIXpercentInv / positiveSPXpercent ) * 100 : na
+
+plot(Difference2, title="Difference2 %", style=plot.style_line, color=color.white)
+
+/////////////////
+
+bbstd1 = input(3)
+bbstd2 = input(3)
+
+[bbMiddle1, bbUpper1, bbLower1] = ta.bb(Difference1, input(252), bbstd1)
+
+//plot(bbUpper1, color = color.white)
+
+[bbMiddle2, bbUpper2, bbLower2] = ta.bb(Difference2, input(252), bbstd2)
+
+//plot(bbUpper2, color = color.white)
+
+BarcolorInput1 = input(125)
+BarcolorInput11 = input(90)
+BarcolorInput2 = input(125)
+BarcolorInput22 = input(90)
+
+BarColorz1 =  dB1 ? Difference1 > BarcolorInput1 ? color.blue : Difference1 < BarcolorInput11 ? color.red : color.gray : na
+BarColorz2 = dB2 ? Difference2 > BarcolorInput2 ? color.blue : Difference2 < BarcolorInput22 ? color.red : color.gray : na
+
+barcolor(dB1 ? BarColorz1 : dB2 ? BarColorz2 : na)

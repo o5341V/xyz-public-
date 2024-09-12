@@ -1,0 +1,24 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Uni_ve12se
+
+//@version=4
+study(title = "Short", shorttitle = "S", format=format.price, precision=2, resolution="", overlay=true)
+
+length = input(20, minval=1)
+src = input(close, title="Source")
+mult = input(2.0, minval=0.001, maxval=50, title="StdDev")
+basis = sma(src, length)
+dev = mult * stdev(src, length)
+upper = basis + dev
+lower = basis - dev
+bbr = (src - lower)/(upper - lower)
+
+len = input(14, minval=1, title="Length")
+up = rma(max(change(src), 0), len)
+down = rma(-min(change(src), 0), len)
+rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - (100 / (1 + up / down))
+
+
+OB = rsi > input(70) and bbr > input(1) == true
+//plotshape(Short, style=shape.triangledown, location=location.abovebar, size=size.tiny,color=color.new(#ff0000,50))
+plotshape(OB, style=shape.triangledown, location=location.abovebar, size=size.tiny,color=color.new(#ff0000,0))
