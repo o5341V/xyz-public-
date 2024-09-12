@@ -1,0 +1,84 @@
+//@version=4
+study("DifferenceSpread FT", shorttitle="DSFT", overlay=false)
+
+Length = input(20, minval=1)
+annualVol = input(365, minval=1)
+
+Price = log(close / close[1])
+periods = iff(timeframe.isintraday or timeframe.isdaily, 1, 7)
+
+sigma = stdev(Price, Length)
+HVol = sigma * sqrt(annualVol / periods) * 100
+
+lowVol = lowest(HVol, 365)
+
+HVrankUp = HVol - lowVol
+
+maxVol = highest(HVol, 365)
+
+HVrankLow = maxVol - lowVol
+
+HVR = HVrankUp / HVrankLow
+
+//
+
+tunits = input(title="Included Trading Days", type=input.integer, defval=252)
+ma = input(title="Moving Average", type=input.integer, defval=5)
+
+si = security("SKEW", timeframe.period, sma(close, ma))
+
+max = highest(si, tunits)
+min = lowest(si, tunits)
+
+sir = (si - min) / (max - min)
+
+diff = sir - HVR
+zero = 0.0
+
+diffcolor = diff > 0 and diff < .80 ? color.gray : 
+   diff < 0 and diff > -.85 ? color.gray : color.white
+
+colorUp = diff > 0.85 ? #00FF00FF : diff > 0.82 ? #00E114FF : 
+   diff > 0.79 ? #00C328FF : diff > 0.66 ? #00A53CFF : diff > 0.55 ? #008750FF : 
+   diff > 0.40 ? #006964FF : diff > 0.27 ? #004B78FF : #002D8CFF
+colorDn = diff < -0.85 ? #FF0000FF : 
+   diff < -0.82 ? #E10014FF : diff < -0.79 ? #C30028FF : 
+   diff < -0.66 ? #A5003CFF : diff < -0.53 ? #870050FF : 
+   diff < -0.40 ? #690064FF : diff < -0.27 ? #4B0078FF : #2D008CFF
+
+plot(diff, "Diff", color=diff > 0 ? colorUp : diff < 0 ? colorDn : #808080FF, style=plot.style_histogram)
+
+//plot(diff, color=diffcolor, style=histogram)
+band1 = hline(1, title="Upper Line", linestyle=hline.style_dashed, linewidth=1, color=color.silver)
+band0 = hline(-1, title="Lower Line", linestyle=hline.style_dashed, linewidth=1, color=color.silver)
+
+//plot(HVR, color=color.white, style=plot.style_line)
+//plot(sir, color=color.white, style=plot.style_line)
+//plot(zero, color=#002d8c, transp=100)
+
+
+sHigh = security(syminfo.tickerid , timeframe.period, high)
+sLow = security(syminfo.tickerid , timeframe.period, low)
+//
+_src = (sHigh + sLow) / 2
+
+
+
+f_fisher(_src, _window) =>
+    min_Median = lowest(diff, _window)
+    max_Median = highest(diff, _window)
+    temp = (diff - min_Median) / (max_Median - min_Median)
+    value = 0.0
+    value := .5 * 2 * ((temp - .5) + (.5 * nz(value[1])))
+    value1 = value >= .9999 ? .9999 : value <= -.9999 ? -.9999 : value
+    temp2 = (1 + value1) / (1 - value1)
+    fisher_Value = 0.0
+    fisher_Value := (.25 * log(temp2)) + (.5 * nz(fisher_Value[1]))
+    fisher_Value
+
+Fish1 = f_fisher(_src, input(21))
+plot(Fish1, "Sharpe", color = color.blue, style = plot.style_line)
+
+backgroundColour = diff >= .80 ? color.white : na
+
+bgcolor(color=backgroundColour, transp=85)

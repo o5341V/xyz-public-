@@ -1,0 +1,109 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Uni_ve12se
+
+//@version=4
+study("Fisher Transform", resolution="",overlay=false)
+
+sHigh = security(syminfo.tickerid , timeframe.period, high)
+sLow = security(syminfo.tickerid , timeframe.period, low)
+//
+_src = (sHigh + sLow) / 2
+//
+// Inputs
+
+f_fisher(_src, _window) =>
+    min_Median = lowest(_src, _window)
+    max_Median = highest(_src, _window)
+    temp = (_src - min_Median) / (max_Median - min_Median)
+    value = 0.0
+    value := .5 * 2 * ((temp - .5) + (.5 * nz(value[1])))
+    value1 = value >= .9999 ? .9999 : value <= -.9999 ? -.9999 : value
+    temp2 = (1 + value1) / (1 - value1)
+    fisher_Value = 0.0
+    fisher_Value := (.25 * log(temp2)) + (.5 * nz(fisher_Value[1]))
+    fisher_Value
+
+top = f_fisher(close,6) <= -3 ? 1 : 0
+topz = f_fisher(close,7) <= -2 ? 1 : 0
+topzz = f_fisher(close,8) <= -2 ? 1 : 0
+topzzz = f_fisher(close,9) <= -2 ? 1 : 0
+
+top1 = f_fisher(close,10) <= -2 ? 1 : 0
+top11 = f_fisher(close,14) <= -2 ? 1 : 0
+top111 = f_fisher(close,21) <= -1 ? 1 : 0
+top1111 = f_fisher(close,52) <= -1 ? 1 : 0
+top11111 = f_fisher(close,89) <= -1 ? 1 : 0
+top111111 = f_fisher(close,155) <= -1 ? 1 : 0
+top1111111 = f_fisher(close,252) <= -0 ? 1 : 0
+
+Trust = (top + topz + topzz + topzzz + top1 + top11 + top111 + top1111 + top11111 + top111111 + top1111111) * -1
+
+
+op = f_fisher(close,6) >= 3 ? 1 : 0
+opz = f_fisher(close,7) >= 2 ? 1 : 0
+opzz = f_fisher(close,8) >= 2 ? 1 : 0
+opzzz = f_fisher(close,9) >= 2 ? 1 : 0
+
+op1 = f_fisher(close,10) >= 3  ? 1 : 0
+op11 = f_fisher(close,14) >= 3  ? 1 : 0
+op111 = f_fisher(close,21) >= 3  ? 1 : 0
+op1111 = f_fisher(close,52) >= 2  ? 1 : 0
+op11111 = f_fisher(close,89) >= 2  ? 1 : 0
+op111111 = f_fisher(close,155) >= 1  ? 1 : 0
+op1111111 = f_fisher(close,252) >= 0 ? 1 : 0
+
+Issues = (op + opz + opzz + opzzz + op1 + op11 + op111 + op1111 + op11111 + op111111 + op111111) 
+
+// Colour
+
+bullColor = #00ffcb
+bearColor = #f44336
+
+var sessionFills = array.new_color(21)
+
+array.set(sessionFills, 0, color.new(bearColor, 0))
+array.set(sessionFills, 1, color.new(bearColor, 10))
+array.set(sessionFills, 2, color.new(bearColor, 20))
+array.set(sessionFills, 3, color.new(bearColor, 30))
+array.set(sessionFills, 4, color.new(bearColor, 40))
+array.set(sessionFills, 5, color.new(bearColor, 50))
+array.set(sessionFills, 6, color.new(bearColor, 60))
+array.set(sessionFills, 7, color.new(bearColor, 70))
+array.set(sessionFills, 8, color.new(bearColor, 80))
+array.set(sessionFills, 9, color.new(bearColor, 90))
+array.set(sessionFills, 10, color.new(bullColor, 100))
+array.set(sessionFills, 11, color.new(bullColor, 100))
+array.set(sessionFills, 12, color.new(bullColor, 80))
+array.set(sessionFills, 13, color.new(bullColor, 70))
+array.set(sessionFills, 14, color.new(bullColor, 60))
+array.set(sessionFills, 15, color.new(bullColor, 50))
+array.set(sessionFills, 16, color.new(bullColor, 40))
+array.set(sessionFills, 17, color.new(bullColor, 30))
+array.set(sessionFills, 18, color.new(bullColor, 20))
+array.set(sessionFills, 19, color.new(bullColor, 10))
+array.set(sessionFills, 20, color.new(bullColor, 0))
+
+plot(series=Trust, title="Bull Power Level", style=plot.style_columns)
+plot(series=Issues, title="Bear Power Level", style=plot.style_columns)
+
+//plot(series=Trust, title="Bull Power Level", style=plot.style_columns, color=array.get(sessionFills, Trust))
+//plot(series=Trust, title="Bull Power Level", style=plot.style_cross, color=array.get(sessionFills, Trust))
+//plot(series=Issues, title="Bear Power Level", style=plot.style_columns, color=array.get(sessionFills, Issues))
+//plot(series=Issues, title="Bear Power Level", style=plot.style_cross, color=array.get(sessionFills, Issues))
+
+//hline(0, color=color.new(#34e1eb,30), title="0 Line")
+//hline(3, color=color.new(#34e1eb,30), title="2 Std. Devs")
+//hline(4, color=color.new(#34e1eb,30), title="4 Std. Devs")
+//hline(5, color=color.new(#34e1eb,30), title="4 Std. Devs")
+
+Sigma= input(-6)
+Sigmaa= input(-4)
+Sigmaaa= input(-2)
+
+Sigma2= input(6)
+Sigma22= input(4)
+Sigma222= input(2)
+
+
+cld = Trust < Sigma ? color.new(bullColor, 0) : Trust < Sigmaa ? color.new(bullColor, 20) : Trust < Sigmaaa ? color.new(bullColor, 60) : Issues > Sigma2 ? color.new(bearColor, 0) : Issues > Sigma22 ? color.new(bearColor, 20) : Issues > Sigma222 ? color.new(bearColor, 60) : na
+barcolor(cld)

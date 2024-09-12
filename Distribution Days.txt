@@ -1,0 +1,23 @@
+//@version=5
+indicator('D&C Days', overlay=true, precision=1, scale=scale.none)
+is_down_bar = ta.change(close) < close[1] * -0.002 ? true : false
+is_volume_up = ta.change(volume) > 0 ? true : false
+is_distribution = is_down_bar and is_volume_up ? true : false
+//plotshape(series=is_distribution)
+//plotchar(series=(is_distribution?1:false), char='d',color=purple, location=location.belowbar)
+//Keeping count of distribution days
+window = input.int(52, minval=1, title='Window Size')
+cnt = 0
+for i = 0 to window by 1
+    if is_distribution[i]
+        cnt += 1
+        cnt
+//Style: Area, columns, histogram
+plot(cnt, title='DDays', color=color.new(#cc0088, 40), linewidth=2, style=plot.style_line, trackprice=false)
+
+//sum_series = (cnt>5)?true:false
+//plotchar(sum_series,color=purple, location=location.abovebar)
+
+d_series = is_distribution ? cnt : 0
+//plotarrow(d_series)
+

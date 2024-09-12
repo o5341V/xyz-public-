@@ -1,0 +1,51 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Uni_ve12se
+
+//@version=4
+study("Fisher Transform", resolution="",overlay=false)
+
+sHigh = security(syminfo.tickerid , timeframe.period, high)
+sLow = security(syminfo.tickerid , timeframe.period, low)
+//
+_src = (sHigh + sLow) / 2
+//
+// Inputs
+
+f_fisher(_src, _window) =>
+    min_Median = lowest(_src, _window)
+    max_Median = highest(_src, _window)
+    temp = (_src - min_Median) / (max_Median - min_Median)
+    value = 0.0
+    value := .5 * 2 * ((temp - .5) + (.5 * nz(value[1])))
+    value1 = value >= .9999 ? .9999 : value <= -.9999 ? -.9999 : value
+    temp2 = (1 + value1) / (1 - value1)
+    fisher_Value = 0.0
+    fisher_Value := (.25 * log(temp2)) + (.5 * nz(fisher_Value[1]))
+    fisher_Value
+
+top = f_fisher(close,6) <= -3 ? 1 : 0
+top1 = f_fisher(close,10) <= -2 ? 1 : 0
+top11 = f_fisher(close,14) <= -2 ? 1 : 0
+top111 = f_fisher(close,21) <= -1 ? 1 : 0
+top1111 = f_fisher(close,52) <= -1 ? 1 : 0
+top11111 = f_fisher(close,89) <= -1 ? 1 : 0
+top111111 = f_fisher(close,155) <= -1 ? 1 : 0
+top1111111 = f_fisher(close,252) <= -0 ? 1 : 0
+
+Trust = (top + top1 + top11 + top111 + top1111 + top11111 + top111111 + top1111111) 
+
+// Colour
+//plot(series=Trust, title="Bull Power Level", style=plot.style_columns)
+//plot(series=Issues, title="Bear Power Level", style=plot.style_columns)
+
+plot(series=Trust, title="Bull Power Level", style=plot.style_columns)
+plot(series=Trust, title="Bull Power Level", style=plot.style_cross)
+
+hline(0, color=color.new(#34e1eb,30), title="0 Line")
+hline(3, color=color.new(#34e1eb,30), title="2 Std. Devs")
+hline(4, color=color.new(#34e1eb,30), title="4 Std. Devs")
+hline(5, color=color.new(#34e1eb,30), title="4 Std. Devs")
+
+bullish = Trust > input(6)
+
+plotshape(bullish, color=color.white, style=shape.circle, location=location.bottom, size=size.tiny, textcolor=color.white, transp=10) 

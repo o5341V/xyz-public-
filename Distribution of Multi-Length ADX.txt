@@ -1,0 +1,268 @@
+//@version=5
+indicator('Distribution of Multi-Length ADX', overlay=false, max_bars_back=1000)
+
+SHOW_Series = input(title='Show Series', defval=false)
+
+//--------------------------------------------------------------------
+normalize(_src, _min, _max) =>
+// Normalizes series with unknown min/max using historical min/max.
+// _src      : series to rescale.
+// _min, _min: min/max values of rescaled series.
+    var _historicMin = +10e10
+    var _historicMax = -10e10
+    _historicMin := math.min(nz(_src, _historicMin), _historicMin)
+    _historicMax := math.max(nz(_src, _historicMax), _historicMax)
+    _min + (_max - _min) * (_src - _historicMin) / math.max(_historicMax - _historicMin, 10e-10)
+
+//--------------------------------------------------------------------
+
+string  GRP1                    = 'Clean ADX Settings :'
+
+positive_switch = input(true)
+negative_switch = input(true)
+
+//--------------------------------------------------------------------
+//                                Lengths
+//--------------------------------------------------------------------
+
+//Lengths
+//len1 = 7
+len2 = 11
+len3 = 15
+len4 = 19
+len5 = 23
+len6 = 27
+len7 = 31
+len8 = 35
+len9 = 39
+len10 = 43
+len11 = 47
+len12 = 51
+len13 = 56
+len14 = 59
+len15 = 63
+len16 = 70
+len17 = 80
+len18 = 90
+len19 = 100
+len20 = 110
+len21 = 120
+len22 = 130
+len23 = 140
+len24 = 150
+len25 = 170
+len26 = 190
+len27 = 210
+len28 = 230
+len29 = 250
+len30 = 270
+len31 = 290
+len32 = 321
+
+//--------------------------------------------------------------------
+//                              unction 1
+//--------------------------------------------------------------------
+
+asrc                             = input.source(hlc3, "Source for Clean ADX", group = GRP1)
+
+super(float asrc, _window) =>
+	_length = _window
+    f = (1.414 * math.pi)/_length
+    a = math.exp(-f)
+    c2 = 2 * a * math.cos(f)
+    c3 = -a*a
+    c1 = 1-c2-c3
+    smooth = 0.0
+    smooth := c1*(asrc+asrc[1])*0.5+c2*nz(smooth[1])+c3*nz(smooth[2])
+    [smooth]
+	
+//--------------------------------------------------------------------
+//                                Logic 1
+//--------------------------------------------------------------------
+
+_tcs(_window) =>
+    _length = _window
+	hh = math.max(math.sign(ta.change(ta.highest(_length))), 0)
+	[mmh]=super(hh, _length)
+	tcs = math.pow(mmh, 2)
+	tcs
+
+//--------------------------------------------------------------------
+//                                Logic 2
+//--------------------------------------------------------------------
+
+_tcl(_window) =>
+    _length = _window
+	ll = math.max(math.sign(ta.change(ta.lowest(_length)) * -1), 0)
+	[mml]=super(ll, _length)
+	tcl = math.pow(mml, 2)
+
+//--------------------------------------------------------------------
+//                                Logic 3
+//--------------------------------------------------------------------
+
+_adx(_window) =>
+    _length = _window
+    hh = math.max(math.sign(ta.change(ta.highest(_length))), 0)
+	ll = math.max(math.sign(ta.change(ta.lowest(_length)) * -1), 0)
+    [mmh]=super(hh, _length)
+	[mml]=super(ll, _length)
+    tcs = math.pow(mmh, 2)
+	tcl = math.pow(mml, 2)
+
+//--------------------------------------------------------------------
+//                                Plots
+//--------------------------------------------------------------------
+
+[a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30, a31, a32] = request.security(syminfo.ticker, input('', title='timeframe'), [ _tcl(len2), _tcl(len3), _tcl(len4), _tcl(len5), _tcl(len6), _tcl(len7), _tcl(len8), _tcl(len9), _tcl(len10), _tcl(len11), _tcl(len12), _tcl(len13), _tcl(len14), _tcl(len15), _tcl(len16), _tcl(len17), _tcl(len18), _tcl(len19), _tcl(len20), _tcl(len21), _tcl(len22), _tcl(len23), _tcl(len24), _tcl(len25), _tcl(len26), _tcl(len27), _tcl(len28), _tcl(len29), _tcl(len30), _tcl(len31), _tcl(len32)])
+
+mtfK2 =  a2 >= 0.01 ? 1 : 0
+mtfK3 =  a3 >= 0.01 ? 1 : 0
+mtfK4 =  a4 >= 0.01 ? 1 : 0
+mtfK5 =  a5 >= 0.01 ? 1 : 0
+mtfK6 =  a6 >= 0.01 ? 1 : 0
+mtfK7 =  a7 >= 0.01 ? 1 : 0
+mtfK8 =  a8 >= 0.01 ? 1 : 0
+mtfK9 =  a9 >= 0.01 ? 1 : 0
+mtfK10 =  a10 >= 0.01 ? 1 : 0
+mtfK11 =  a11 >= 0.01 ? 1 : 0
+mtfK12 =  a22 >= 0.01 ? 1 : 0
+mtfK13 =  a13 >= 0.01 ? 1 : 0
+mtfK14 =  a14 >= 0.01 ? 1 : 0
+mtfK15 =  a15 >= 0.01 ? 1 : 0
+mtfK16 =  a16 >= 0.01 ? 1 : 0
+mtfK17 =  a17 >= 0.01 ? 1 : 0
+mtfK18 =  a18 >= 0.01 ? 1 : 0
+mtfK19 =  a19 >= 0.01 ? 1 : 0
+mtfK20 =  a20 >= 0.01 ? 1 : 0
+mtfK21 =  a21 >= 0.01 ? 1 : 0
+mtfK22 =  a22 >= 0.01 ? 1 : 0
+mtfK23 =  a23 >= 0.01 ? 1 : 0
+mtfK24 =  a24 >= 0.01 ? 1 : 0
+mtfK25 =  a25 >= 0.01 ? 1 : 0
+mtfK26 =  a26 >= 0.01 ? 1 : 0
+mtfK27 =  a27 >= 0.01 ? 1 : 0
+mtfK28 =  a28 >= 0.01 ? 1 : 0
+mtfK29 =  a29 >= 0.01 ? 1 : 0
+mtfK30 =  a30 >= 0.01 ? 1 : 0
+mtfK31 =  a31 >= 0.01 ? 1 : 0
+mtfK32 =  a32 >= 0.01 ? 1 : 0
+
+mtfRes1 =  SHOW_Series ? (mtfK2 + mtfK3 + mtfK4 + mtfK5 + mtfK6 + mtfK7 + mtfK8 + mtfK9 + mtfK10 + mtfK11 + mtfK12 + mtfK13 + mtfK14 + mtfK15 + mtfK16 + mtfK17 + mtfK18 + mtfK19 + mtfK20 + mtfK21 + mtfK22 + mtfK23 + mtfK24 + mtfK25 + mtfK26 + mtfK27 + mtfK28 + mtfK29 + mtfK30 + mtfK31 + mtfK32) : na
+//plot(series=mtfRes1, title="Power Level 1 ", color=color.new(#ffffff, 0), style=plot.style_line)
+
+a_2 = normalize(a2, 0, 100)
+a_3 = normalize(a3, 0, 100)
+a_4 = normalize(a4, 0, 100)
+a_5 = normalize(a5, 0, 100)
+a_6 = normalize(a6, 0, 100)
+a_7 = normalize(a7, 0, 100)
+a_8 = normalize(a8, 0, 100)
+a_9 = normalize(a9, 0, 100)
+a_10 = normalize(a10, 0, 100)
+a_11 = normalize(a11, 0, 100)
+a_12 = normalize(a12, 0, 100)
+a_13 = normalize(a13, 0, 100)
+a_14 = normalize(a14, 0, 100)
+a_15 = normalize(a15, 0, 100)
+a_16 = normalize(a16, 0, 100)
+a_17 = normalize(a17, 0, 100)
+a_18 = normalize(a18, 0, 100)
+a_19 = normalize(a19, 0, 100)
+a_20 = normalize(a20, 0, 100)
+a_21 = normalize(a21, 0, 100)
+a_22 = normalize(a22, 0, 100)
+a_23 = normalize(a23, 0, 100)
+a_24 = normalize(a24, 0, 100)
+a_25 = normalize(a25, 0, 100)
+a_26 = normalize(a26, 0, 100)
+a_27 = normalize(a27, 0, 100)
+a_28 = normalize(a28, 0, 100)
+a_29 = normalize(a29, 0, 100)
+a_30 = normalize(a30, 0, 100)
+a_31 = normalize(a31, 0, 100)
+a_32 = normalize(a32, 0, 100)
+
+pct_rank_height = input(75)
+
+rank2 = ta.percentrank(a_2, pct_rank_height)
+rank3 = ta.percentrank(a_3, pct_rank_height)
+rank4 = ta.percentrank(a_4, pct_rank_height)
+rank5 = ta.percentrank(a_5, pct_rank_height)
+rank6 = ta.percentrank(a_6, pct_rank_height)
+rank7 = ta.percentrank(a_7, pct_rank_height)
+rank8 = ta.percentrank(a_8, pct_rank_height)
+rank9 = ta.percentrank(a_9, pct_rank_height)
+rank10 = ta.percentrank(a_10, pct_rank_height)
+rank11 = ta.percentrank(a_11, pct_rank_height)
+rank12 = ta.percentrank(a_12, pct_rank_height)
+rank13 = ta.percentrank(a_13, pct_rank_height)
+rank14 = ta.percentrank(a_14, pct_rank_height)
+rank15 = ta.percentrank(a_15, pct_rank_height)
+rank16 = ta.percentrank(a_16, pct_rank_height)
+rank17 = ta.percentrank(a_17, pct_rank_height)
+rank18 = ta.percentrank(a_18, pct_rank_height)
+rank19 = ta.percentrank(a_19, pct_rank_height)
+rank20 = ta.percentrank(a_20, pct_rank_height)
+rank21 = ta.percentrank(a_21, pct_rank_height)
+rank22 = ta.percentrank(a_22, pct_rank_height)
+rank23 = ta.percentrank(a_23, pct_rank_height)
+rank24 = ta.percentrank(a_24, pct_rank_height)
+rank25 = ta.percentrank(a_25, pct_rank_height)
+rank26 = ta.percentrank(a_26, pct_rank_height)
+rank27 = ta.percentrank(a_27, pct_rank_height)
+rank28 = ta.percentrank(a_28, pct_rank_height)
+rank29 = ta.percentrank(a_29, pct_rank_height)
+rank30 = ta.percentrank(a_30, pct_rank_height)
+rank31 = ta.percentrank(a_31, pct_rank_height)
+rank32 = ta.percentrank(a_32, pct_rank_height)
+
+ranks_cum = (rank2 + rank3 + rank4 + rank5 + rank6 + rank7 + rank8 + rank9 + rank10 + rank11 + rank12 + rank13 + rank14 + rank15 + rank16 + rank17 + rank18 + rank19 + rank20 + rank21 + rank22 + rank23 + rank24 + rank25 + rank26 + rank27 + rank28 + rank29 + rank30 + rank31 + rank32) / 31
+plot(ranks_cum , title="Power Level 1 ", color=color.new(#ffffff, 5), style=plot.style_line)
+
+bbstd1 = (2)
+
+[bbMiddle1, bbUpper1, bbLower1] = ta.bb(ranks_cum, 1440, bbstd1)
+
+plot(bbUpper1, color =color.rgb(248, 99, 79))
+
+barcolor(ranks_cum >= bbUpper1 ? color.green : color.rgb(46, 46, 48))
+
+plot(a_2, color = color.rgb(255, 82, 82, 49), style = plot.style_line)
+plot(a_3, color =color.rgb(255, 82, 82, 52), style = plot.style_line)
+plot(a_4, color =color.rgb(255, 82, 82, 52), style = plot.style_line)
+plot(a_5, color =color.rgb(255, 82, 82, 51), style = plot.style_line)
+
+plot(a_6, color =color.rgb(255, 153, 0, 60), style = plot.style_line)
+plot(a_7, color =color.rgb(255, 153, 0, 61), style = plot.style_line)
+plot(a_8, color =color.rgb(255, 153, 0, 63), style = plot.style_line)
+plot(a_9, color =color.rgb(255, 153, 0, 64), style = plot.style_line)
+
+plot(a_10, color =color.rgb(255, 235, 59, 68), style = plot.style_line)
+plot(a_11, color =color.rgb(255, 235, 59, 68), style = plot.style_line)
+plot(a_12, color =color.rgb(255, 235, 59, 69), style = plot.style_line)
+plot(a_13, color =color.rgb(255, 235, 59, 71), style = plot.style_line)
+
+plot(a_14, color = color.new(#4caf50, 0), style = plot.style_line)
+plot(a_15, color =color.new(#4caf50, 0), style = plot.style_line)
+plot(a_16, color =color.new(#4caf50, 0), style = plot.style_line)
+plot(a_17, color =color.new(#4caf50, 0), style = plot.style_line)
+
+plot(a_18, color =color.new(#089981, 0), style = plot.style_line)
+plot(a_19, color =color.new(#089981, 0), style = plot.style_line)
+plot(a_20, color =color.new(#089981, 0), style = plot.style_line)
+plot(a_21, color =color.new(#089981, 0), style = plot.style_line)
+
+plot(a_22, color =color.new(#00bcd4, 0), style = plot.style_line)
+plot(a_23, color =color.new(#00bcd4, 0), style = plot.style_line)
+plot(a_24, color =color.new(#00bcd4, 0), style = plot.style_line)
+plot(a_25, color =color.new(#00bcd4, 0), style = plot.style_line)
+
+plot(a_26, color =color.new(#2962ff, 0), style = plot.style_line)
+plot(a_27, color =color.new(#2962ff, 0), style = plot.style_line)
+plot(a_28, color =color.new(#2962ff, 0), style = plot.style_line)
+plot(a_29, color =color.new(#2962ff, 0), style = plot.style_line)
+
+plot(a_30,  color =color.new(#673ab7, 0), style = plot.style_line)
+plot(a_31, color =color.new(#673ab7, 0), style = plot.style_line)
+plot(a_32, color =color.new(#673ab7, 0), style = plot.style_line)

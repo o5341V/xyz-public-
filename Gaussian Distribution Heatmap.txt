@@ -1,0 +1,227 @@
+//@version=5
+indicator('Distribution Heatmap Fisher AMA', overlay=false, max_bars_back=1000)
+
+//
+
+SHOW_Series = input(true)
+positive_switch = input(true)
+negative_switch = input(true)
+
+//Lengths
+len1 = 3
+len2 = 7
+len3 = 11
+len4 = 15
+len5 = 19
+len6 = 23
+len7 = 27
+len8 = 31
+len9 = 35
+len10 = 39
+len11 = 43
+len12 = 47
+len13 = 51
+len14 = 55
+len15 = 59
+len16 = 63
+len17 = 70
+len18 = 80
+len19 = 90
+len20 = 100
+len21 = 110
+len22 = 120
+len23 = 130
+len24 = 140
+len25 = 150
+len26 = 170
+len27 = 190
+len28 = 210
+len29 = 230
+len30 = 250
+len31 = 270
+len32 = 290
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                                                                                                 //
+//               ----------------------------------------------- Adaptive MA -------------------------------------------------------------------                                   //
+//                                                                                                                                                                                 //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+price = input(title='Price Source:', defval=close)
+alphamin = input(title='alpha Min', defval=6)
+alphamax = input(title='alpha Max', defval=75)
+ama = price
+
+// Static model parameters
+minfactor = 2.0 / (alphamax + 1.0)
+maxfactor = 2.0 / (alphamin + 1.0)
+deviation_max = 1.
+deviation_min = 1.
+beta_hb = 1.
+beta_lb = 1.
+
+normalized_atan = 0.
+alpha = (minfactor + maxfactor) / 2.0
+
+beta = 5
+
+pi = 3.141592654
+
+ama := alpha[1] * price + (1 - alpha[1]) * nz(ama[1])
+
+deviation_max := alpha[1] * math.max((price[0] - price[1]) / price[1], 0) + (1 - alpha[1]) * nz(deviation_max[1])
+deviation_min := -alpha[1] * math.min((price[0] - price[1]) / price[1], 0) + (1 - alpha[1]) * nz(deviation_min[1])
+
+beta_hb := beta * deviation_max
+beta_lb := beta * deviation_min
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                                                                                                 //
+//               ----------------------------------------------- Fisher Transform -------------------------------------------------------------------                              //
+//                                                                                                                                                                                 //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+sqV(_window) =>
+    Length = _window
+    heikon = input(false)
+    heikinashi = request.security(ticker.heikinashi(syminfo.tickerid), "", close)
+    vsrc = heikon ? heikinashi : ama
+    // Fisher
+    vhigh_ = ta.highest(vsrc, Length)
+    vlow_ = ta.lowest(vsrc, Length)
+    vvalue = 0.0
+    vvalue := .66 * ((vsrc - vlow_) / (vhigh_ - vlow_) - .5) + .67 * nz(vvalue[1])
+    vfisher = .5 * math.log((1 + vvalue) / (1 - vvalue))
+    // Fisher
+    //
+    vz = 2
+    vp = vvalue
+    vq = 1 / math.pow(3 *vz, 2) - (1/3)
+    vtransform1 = math.pow(1 - math.pow(vp, 2), vq)
+    vtransform2 = vq * (-2 * vp / (1 - math.pow(vp, 2))) * vtransform1
+    vsquareV = vp / (3 * math.sqrt(1 - math.pow(vp, 2))) * (math.pow(vz, 2) - 1) - math.pow(vz, 2) / 2 * (math.sqrt(1 - math.pow(vp, 2)) * vtransform2 / vtransform1)
+    
+sqVTF(ticker, _window) =>
+    a= request.security(ticker, "", sqV(_window))
+    b= request.security(ticker, "", sqV(_window))
+    c= request.security(ticker, "", sqV(_window))
+    theavg = math.avg(-a,-b,-c)*3
+    theavg
+
+//
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                                                                                                 //
+//               ----------------------------------------------- Normalized Fisher -------------------------------------------------------------------                             //
+//                                                                                                                                                                                 //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Custom colors
+//////////////////////////////
+eight_col = #FBFDA8
+seven_col = #F2E398
+six_col = #E7C688
+five_col = #DDA879
+four_col = #D2BB6B
+three_col = #C8685E
+two_col = #8D5258
+one_col = #B34664
+zero_col = #A8386E
+
+negzero_col = #9E3178
+negone_col = #932881
+negtwo_col = #872089
+negthree_col = #69187E
+negfour_col = #4D1274
+negfive_col = #330C69
+negsix_col = #1c075F
+negseven_col = #070354
+negeight_col = #000A4A
+
+//Color
+color_fun(src) =>
+    pos_col = positive_switch ? src >= 7.5 ? eight_col : src >= 6.5625 and src <= 7.5 ? seven_col : src >= 5.625 and src <= 6.5625 ? six_col : src >= 4.6875 and src <= 5.625 ? five_col : src >= 3.75 and src <= 4.6875 ? four_col : src >= 2.8125 and src <= 3.75 ? three_col : src >= 1.875 and src <= 2.8125 ? two_col : src >= .9375 and src <= 1.875 ? one_col : src >= 0 and src <= .9375 ? zero_col : na : na
+
+    neg_col = negative_switch ? src <= -7.5 ? negeight_col : src >= -7.5 and src <= -6.5625 ? negseven_col : src >= -6.5625 and src <= -5.625? negsix_col : src >= -5.625 and src <= -4.6875 ? negfive_col : src >= -4.6875 and src <= -3.75 ? negfour_col : src >= -3.75 and src <= -2.8125 ? negthree_col : src >= -2.8125 and src <= -1.875 ? negtwo_col : src >= -1.875 and src <= -.9375 ? negone_col : src >= -.9375 and src <= 0 ? negzero_col : na : na
+    col = src >= 0 ? pos_col : neg_col
+    col 
+
+
+
+
+//Fetching 32 datapoints with one security()call.
+[a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30, a31, a32] = request.security(syminfo.ticker, input('', title='timeframe'), [sqVTF(syminfo.tickerid, len1), sqVTF(syminfo.tickerid,len2), sqVTF(syminfo.tickerid,len3), sqVTF(syminfo.tickerid,len4), sqVTF(syminfo.tickerid,len5), sqVTF(syminfo.tickerid,len6), sqVTF(syminfo.tickerid,len7), sqVTF(syminfo.tickerid,len8), sqVTF(syminfo.tickerid,len9), sqVTF(syminfo.tickerid,len10), sqVTF(syminfo.tickerid,len11), sqVTF(syminfo.tickerid,len12), sqVTF(syminfo.tickerid,len13), sqVTF(syminfo.tickerid,len14), sqVTF(syminfo.tickerid,len15), sqVTF(syminfo.tickerid,len16), sqVTF(syminfo.tickerid,len17), sqVTF(syminfo.tickerid,len18), sqVTF(syminfo.tickerid,len19), sqVTF(syminfo.tickerid,len20), sqVTF(syminfo.tickerid,len21), sqVTF(syminfo.tickerid,len22), sqVTF(syminfo.tickerid,len23), sqVTF(syminfo.tickerid,len24), sqVTF(syminfo.tickerid,len25), sqVTF(syminfo.tickerid,len26), sqVTF(syminfo.tickerid,len27), sqVTF(syminfo.tickerid,len28), sqVTF(syminfo.tickerid,len29), sqVTF(syminfo.tickerid,len30), sqVTF(syminfo.tickerid,len31), sqVTF(syminfo.tickerid,len32)])
+
+
+
+plot(64, color=color_fun(a1), transp=0, linewidth=6)
+
+plot(62, color=color_fun(a2), transp=0, linewidth=6)
+
+plot(60, color=color_fun(a3), transp=0, linewidth=6)
+
+plot(58, color=color_fun(a4), transp=0, linewidth=6)
+
+plot(56, color=color_fun(a5), transp=0, linewidth=6)
+
+plot(54, color=color_fun(a6), transp=0, linewidth=6)
+
+plot(52, color=color_fun(a7), transp=0, linewidth=6)
+
+plot(50, color=color_fun(a8), transp=0, linewidth=6)
+
+plot(48, color=color_fun(a9), transp=0, linewidth=6)
+
+plot(46, color=color_fun(a10), transp=0, linewidth=6)
+
+plot(44, color=color_fun(a11), transp=0, linewidth=6)
+
+plot(42, color=color_fun(a12), transp=0, linewidth=6)
+
+plot(40, color=color_fun(a13), transp=0, linewidth=6)
+
+plot(38, color=color_fun(a14), transp=0, linewidth=6)
+
+plot(36, color=color_fun(a15), transp=0, linewidth=6)
+
+plot(34, color=color_fun(a16), transp=0, linewidth=6)
+
+plot(32, color=color_fun(a17), transp=0, linewidth=6)
+
+plot(30, color=color_fun(a18), transp=0, linewidth=6)
+
+plot(28, color=color_fun(a19), transp=0, linewidth=6)
+
+plot(26, color=color_fun(a20), transp=0, linewidth=6)
+
+plot(24, color=color_fun(a21), transp=0, linewidth=6)
+
+plot(22, color=color_fun(a22), transp=0, linewidth=6)
+
+plot(20, color=color_fun(a23), transp=0, linewidth=6)
+
+
+plot(18, color=color_fun(a24), transp=0, linewidth=6)
+
+
+plot(16, color=color_fun(a25), transp=0, linewidth=6)
+
+plot(14, color=color_fun(a26), transp=0, linewidth=6)
+
+plot(12, color=color_fun(a27), transp=0, linewidth=6)
+
+plot(10, color=color_fun(a28), transp=0, linewidth=6)
+
+plot(8, color=color_fun(a29), transp=0, linewidth=6)
+
+plot(6, color=color_fun(a30), transp=0, linewidth=6)
+
+plot(4, color=color_fun(a31), transp=0, linewidth=6)
+
+plot(2, color=color_fun(a32), transp=0, linewidth=6)

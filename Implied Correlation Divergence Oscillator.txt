@@ -1,0 +1,28 @@
+//@version=5
+
+//https://www.prnewswire.com/news-releases/cboe-announces-launch-of-new-cboe-3-month-implied-correlation-index-301324621.html
+//Dispersion traders may use COR3M as an indicator to time trades and manage risk.
+//Implied correlation provides a measure of the relative cheapness/richness of index options in relation to the underlying index components.
+ 
+indicator(title="Implied Correlation Divergence Oscillator", shorttitle="ICDO", overlay=false, timeframe="W", timeframe_gaps=true)
+len = input.int(9, minval=1, title="MA Length", tooltip = "This is the MA for the implied correlation sigal that is used to determine the current signal divergence.  Longer MA length tend to produce higher divergences.")
+
+ic_symbol   = input.string(title = "COR Symbol", defval = "COR3M", options=["COR1M", "COR3M", "COR6M", "COR9M", "COR1Y", "COR10D", "COR30D", "COR70D", "COR90D"], group="IC Seleciton")
+ic_signal = request.security(ic_symbol, "D", close)
+
+// Optionally shows the original signal
+plot(ic_signal, "IC Signal", color = color.red, display = display.none)
+ic_ma = ta.sma(ic_signal, len)
+
+
+divergence_signal = ic_ma - ic_signal
+ic_div_max = ta.max(divergence_signal)
+bullColor = color.from_gradient(divergence_signal, -1*ic_div_max, 0, color.new(color.lime, 0), color.new(color.lime, 60))
+bearColor = color.from_gradient(divergence_signal, 0, ic_div_max, color.new(color.red,   60), color.new(color.red, 0))
+osc_color = divergence_signal > 0 ? bearColor : bullColor
+plot(divergence_signal, color = osc_color, title="IC Oscillator Signal")
+hline(0)
+
+
+
+

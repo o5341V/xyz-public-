@@ -1,0 +1,104 @@
+//@version=5
+indicator('Distribution Heatmap Barcolors', overlay=true, max_bars_back=1000)
+
+//
+//
+positive_switch = true
+negative_switch = true
+
+//Lengths
+len1 = 3
+len2 = 7
+len3 = 11
+len4 = 15
+len5 = 19
+len6 = 23
+len7 = 27
+len8 = 31
+len9 = 35
+len10 = 39
+len11 = 43
+len12 = 47
+len13 = 51
+len14 = 55
+len15 = 59
+len16 = 63
+len17 = 70
+len18 = 80
+len19 = 90
+len20 = 100
+len21 = 110
+len22 = 120
+len23 = 130
+len24 = 140
+len25 = 150
+len26 = 170
+len27 = 190
+len28 = 210
+len29 = 230
+len30 = 250
+len31 = 270
+len32 = 290
+
+f(_window) =>
+    Length = _window
+    heikon = true
+    heikinashi = request.security(ticker.heikinashi(syminfo.ticker), "", close)
+    xHL2 = heikon ? heikinashi : close
+    xMaxH = ta.highest(xHL2, Length)
+    xMinL = ta.lowest(xHL2, Length)
+    nValue1 = 0.0
+    nValue2 = 0.0
+    nValue1 := 0.33 * 2 * ((xHL2 - xMinL) / (xMaxH - xMinL) - 0.5) + 0.67 * nz(nValue1[1])
+    iff_1 = nValue1 < -.99 ? -.999 : nValue1
+    nValue2 := nValue1 > .99 ? .999 : iff_1
+    nFish = 0.0
+    nFish := 0.5 * math.log(1 * nValue2 / (1 - nValue2)) + 0.5 * nz(nFish[1])
+    k = input(1.70174454109)
+    multiplier = input(1.00)
+    newSigmoid = (1 / k * math.log((1 + nValue2) / (1 - nValue2)) + 0.5 * nz(nFish[1])) * multiplier
+    newSigmoid
+
+
+
+
+
+//Custom colors
+//////////////////////////////
+eight_col = #FBFDA8
+seven_col = #F2E398
+six_col = #E7C688
+five_col = #DDA879
+four_col = #D2886B
+three_col = #C8685E
+two_col = #BD525B
+one_col = #B34664
+zero_col = #A83B6E
+
+negzero_col = #9E3178
+negone_col = #932881
+negtwo_col = #872089
+negthree_col = #C8685E
+negfour_col = #D2886B
+negfive_col = #DDA879
+negsix_col = #E7C688
+negseven_col = #F2E398
+negeight_col = #FBFDA8
+
+//Color
+color_fun(src) =>
+    pos_col = positive_switch ? src >= 7.5 ? eight_col : src >= 6.5625 and src <= 7.5 ? seven_col : src >= 5.625 and src <= 6.5625 ? six_col : src >= 4.6875 and src <= 5.625 ? five_col : src >= 3.75 and src <= 4.6875 ? four_col : src >= 2.8125 and src <= 3.75 ? three_col : src >= 1.875 and src <= 2.8125 ? two_col : src >= .9375 and src <= 1.875 ? one_col : src >= 0 and src <= .9375 ? zero_col : na : na
+
+    neg_col = negative_switch ? src <= -7.5 ? negeight_col : src >= -7.5 and src <= -6.5625 ? negseven_col : src >= -6.5625 and src <= -5.625? negsix_col : src >= -5.625 and src <= -4.6875 ? negfive_col : src >= -4.6875 and src <= -3.75 ? negfour_col : src >= -3.75 and src <= -2.8125 ? negthree_col : src >= -2.8125 and src <= -1.875 ? negtwo_col : src >= -1.875 and src <= -.9375 ? negone_col : src >= -.9375 and src <= 0 ? negzero_col : na : na
+    col = src >= 0 ? pos_col : neg_col
+    col 
+
+
+
+
+//Fetching 32 datapoints with one security()call.
+[a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30, a31, a32] = request.security(syminfo.ticker, input('', title='timeframe'), [f(len1), f(len2), f(len3), f(len4), f(len5), f(len6), f(len7), f(len8), f(len9), f(len10), f(len11), f(len12), f(len13), f(len14), f(len15), f(len16), f(len17), f(len18), f(len19), f(len20), f(len21), f(len22), f(len23), f(len24), f(len25), f(len26), f(len27), f(len28), f(len29), f(len30), f(len31), f(len32)])
+
+Bars = ( a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10 + a11 + a12 + a13 + a14 + a15 + a16 + a17 + a18 + a19 + a20 + a21 + a22 + a23 + a24 + a25 + a26 + a27 + a28 + a29 + a30 + a31 + a32 ) / 32
+
+barcolor(color=color_fun(Bars))

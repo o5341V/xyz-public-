@@ -1,0 +1,315 @@
+ //@version=5
+indicator('Distribution Heatmap - ADX (Pair w/ DHF)', overlay=false, max_bars_back=1000)
+
+SHOW_Series = input(title='Show Series', defval=false)
+
+//--------------------------------------------------------------------
+normalize(_src, _min, _max) =>
+// Normalizes series with unknown min/max using historical min/max.
+// _src      : series to rescale.
+// _min, _min: min/max values of rescaled series.
+    var _historicMin = +10e10
+    var _historicMax = -10e10
+    _historicMin := math.min(nz(_src, _historicMin), _historicMin)
+    _historicMax := math.max(nz(_src, _historicMax), _historicMax)
+    _min + (_max - _min) * (_src - _historicMin) / math.max(_historicMax - _historicMin, 10e-10)
+
+//--------------------------------------------------------------------
+
+string  GRP1                    = 'Clean ADX Settings :'
+
+positive_switch = input(true)
+negative_switch = input(true)
+
+//--------------------------------------------------------------------
+//                                Lengths
+//--------------------------------------------------------------------
+
+//Lengths
+//len1 = 7
+len2 = 11
+len3 = 15
+len4 = 19
+len5 = 23
+len6 = 27
+len7 = 31
+len8 = 35
+len9 = 39
+len10 = 43
+len11 = 47
+len12 = 51
+len13 = 56
+len14 = 59
+len15 = 63
+len16 = 70
+len17 = 80
+len18 = 90
+len19 = 100
+len20 = 110
+len21 = 120
+len22 = 130
+len23 = 140
+len24 = 150
+len25 = 170
+len26 = 190
+len27 = 210
+len28 = 230
+len29 = 250
+len30 = 270
+len31 = 290
+len32 = 321
+
+//--------------------------------------------------------------------
+//                              unction 1
+//--------------------------------------------------------------------
+
+asrc                             = input.source(hlc3, "Source for Clean ADX", group = GRP1)
+
+super(float asrc, _window) =>
+	_length = _window
+    f = (1.414 * math.pi)/_length
+    a = math.exp(-f)
+    c2 = 2 * a * math.cos(f)
+    c3 = -a*a
+    c1 = 1-c2-c3
+    smooth = 0.0
+    smooth := c1*(asrc+asrc[1])*0.5+c2*nz(smooth[1])+c3*nz(smooth[2])
+    [smooth]
+	
+//--------------------------------------------------------------------
+//                                Logic 1
+//--------------------------------------------------------------------
+
+_tcs(_window) =>
+    _length = _window
+	hh = math.max(math.sign(ta.change(ta.highest(_length))), 0)
+	[mmh]=super(hh, _length)
+	tcs = math.pow(mmh, 2)
+	tcs
+
+//--------------------------------------------------------------------
+//                                Logic 2
+//--------------------------------------------------------------------
+
+_tcl(_window) =>
+    _length = _window
+	ll = math.max(math.sign(ta.change(ta.lowest(_length)) * -1), 0)
+	[mml]=super(ll, _length)
+	tcl = math.pow(mml, 2)
+
+//--------------------------------------------------------------------
+//                                Logic 3
+//--------------------------------------------------------------------
+
+_adx(_window) =>
+    _length = _window
+    hh = math.max(math.sign(ta.change(ta.highest(_length))), 0)
+	ll = math.max(math.sign(ta.change(ta.lowest(_length)) * -1), 0)
+    [mmh]=super(hh, _length)
+	[mml]=super(ll, _length)
+    tcs = math.pow(mmh, 2)
+	tcl = math.pow(mml, 2)
+
+//--------------------------------------------------------------------
+//                                Plots
+//--------------------------------------------------------------------
+
+eight_col = #FBFDA8
+seven_col = #F2E398
+six_col = #E7C688
+five_col = #DDA879
+four_col = #D2BB6B
+three_col = #C8685E
+two_col = #8D5258
+one_col = #B34664
+zero_col = #A8386E
+
+negzero_col = #9E3178
+negone_col = #932881
+negtwo_col = #872089
+negthree_col = #69187E
+negfour_col = #4D1274
+negfive_col = #330C69
+negsix_col = #1c075F
+negseven_col = #070354
+negeight_col = #13172200
+
+//Color
+color_fun(src) =>
+    pos_col = positive_switch ? src >= 0.08 ? eight_col : src >= 0.07 and src <= 0.08 ? seven_col : src >= 0.06 and src <= 0.07 ? six_col : src >= 0.05 and src <= 0.06 ? five_col : src >= 0.04 and src <= 0.05 ? four_col : src >= 0.03 and src <= 0.04 ? three_col : src >= 0.02 and src <= 0.03 ? two_col : src >= 0.02 and src <= 0.01 ? one_col : src >= 0 and src <= 0.01 ? negeight_col : negeight_col : na
+
+    //neg_col = negative_switch ? src <= -1? negeight_col : src >= -1 and src <= -0.875 ? negseven_col : src >= -0.875 and src <= -0.75 ? negsix_col : src >= -0.75 and src <= -0.625 ? negfive_col : src >= -0.625 and src <= -0.5? negfour_col : src >= -0.5 and src <= -0.375 ? negthree_col : src >= -0.375 and src <= -0.25 ? negtwo_col : src >= -0.25 and src <= -0.125 ? negone_col : src >= -0.125 and src <= 0 ? negzero_col : na : na
+    //col = src >= 0 ? pos_col : neg_col
+    //col 
+
+[a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30, a31, a32] = request.security(syminfo.ticker, input('', title='timeframe'), [ _tcl(len2), _tcl(len3), _tcl(len4), _tcl(len5), _tcl(len6), _tcl(len7), _tcl(len8), _tcl(len9), _tcl(len10), _tcl(len11), _tcl(len12), _tcl(len13), _tcl(len14), _tcl(len15), _tcl(len16), _tcl(len17), _tcl(len18), _tcl(len19), _tcl(len20), _tcl(len21), _tcl(len22), _tcl(len23), _tcl(len24), _tcl(len25), _tcl(len26), _tcl(len27), _tcl(len28), _tcl(len29), _tcl(len30), _tcl(len31), _tcl(len32)])
+//_adx(len1),
+
+//
+
+//plot(64, color=color_fun(a1), transp=0, linewidth=6)
+
+plot(62, color=color_fun(a2), transp=0, linewidth=6)
+
+plot(60, color=color_fun(a3), transp=0, linewidth=6)
+
+plot(58, color=color_fun(a4), transp=0, linewidth=6)
+
+plot(56, color=color_fun(a5), transp=0, linewidth=6)
+
+plot(54, color=color_fun(a6), transp=0, linewidth=6)
+
+plot(52, color=color_fun(a7), transp=0, linewidth=6)
+
+plot(50, color=color_fun(a8), transp=0, linewidth=6)
+
+plot(48, color=color_fun(a9), transp=0, linewidth=6)
+
+plot(46, color=color_fun(a10), transp=0, linewidth=6)
+
+plot(44, color=color_fun(a11), transp=0, linewidth=6)
+
+plot(42, color=color_fun(a12), transp=0, linewidth=6)
+
+plot(40, color=color_fun(a13), transp=0, linewidth=6)
+
+plot(38, color=color_fun(a14), transp=0, linewidth=6)
+
+plot(36, color=color_fun(a15), transp=0, linewidth=6)
+
+plot(34, color=color_fun(a16), transp=0, linewidth=6)
+
+plot(32, color=color_fun(a17), transp=0, linewidth=6)
+
+plot(30, color=color_fun(a18), transp=0, linewidth=6)
+
+plot(28, color=color_fun(a19), transp=0, linewidth=6)
+
+plot(26, color=color_fun(a20), transp=0, linewidth=6)
+
+plot(24, color=color_fun(a21), transp=0, linewidth=6)
+
+plot(22, color=color_fun(a22), transp=0, linewidth=6)
+
+plot(20, color=color_fun(a23), transp=0, linewidth=6)
+
+plot(18, color=color_fun(a24), transp=0, linewidth=6)
+
+plot(16, color=color_fun(a25), transp=0, linewidth=6)
+
+plot(14, color=color_fun(a26), transp=0, linewidth=6)
+
+plot(12, color=color_fun(a27), transp=0, linewidth=6)
+
+plot(10, color=color_fun(a28), transp=0, linewidth=6)
+
+plot(8, color=color_fun(a29), transp=0, linewidth=6)
+
+plot(6, color=color_fun(a30), transp=0, linewidth=6)
+
+plot(4, color=color_fun(a31), transp=0, linewidth=6)
+
+plot(2, color=color_fun(a32), transp=0, linewidth=6)
+
+//
+
+mtfK2 =  a2 >= 0.01 ? 1 : 0
+mtfK3 =  a3 >= 0.01 ? 1 : 0
+mtfK4 =  a4 >= 0.01 ? 1 : 0
+mtfK5 =  a5 >= 0.01 ? 1 : 0
+mtfK6 =  a6 >= 0.01 ? 1 : 0
+mtfK7 =  a7 >= 0.01 ? 1 : 0
+mtfK8 =  a8 >= 0.01 ? 1 : 0
+mtfK9 =  a9 >= 0.01 ? 1 : 0
+mtfK10 =  a10 >= 0.01 ? 1 : 0
+mtfK11 =  a11 >= 0.01 ? 1 : 0
+mtfK12 =  a22 >= 0.01 ? 1 : 0
+mtfK13 =  a13 >= 0.01 ? 1 : 0
+mtfK14 =  a14 >= 0.01 ? 1 : 0
+mtfK15 =  a15 >= 0.01 ? 1 : 0
+mtfK16 =  a16 >= 0.01 ? 1 : 0
+mtfK17 =  a17 >= 0.01 ? 1 : 0
+mtfK18 =  a18 >= 0.01 ? 1 : 0
+mtfK19 =  a19 >= 0.01 ? 1 : 0
+mtfK20 =  a20 >= 0.01 ? 1 : 0
+mtfK21 =  a21 >= 0.01 ? 1 : 0
+mtfK22 =  a22 >= 0.01 ? 1 : 0
+mtfK23 =  a23 >= 0.01 ? 1 : 0
+mtfK24 =  a24 >= 0.01 ? 1 : 0
+mtfK25 =  a25 >= 0.01 ? 1 : 0
+mtfK26 =  a26 >= 0.01 ? 1 : 0
+mtfK27 =  a27 >= 0.01 ? 1 : 0
+mtfK28 =  a28 >= 0.01 ? 1 : 0
+mtfK29 =  a29 >= 0.01 ? 1 : 0
+mtfK30 =  a30 >= 0.01 ? 1 : 0
+mtfK31 =  a31 >= 0.01 ? 1 : 0
+mtfK32 =  a32 >= 0.01 ? 1 : 0
+
+mtfRes1 =  SHOW_Series ? (mtfK2 + mtfK3 + mtfK4 + mtfK5 + mtfK6 + mtfK7 + mtfK8 + mtfK9 + mtfK10 + mtfK11 + mtfK12 + mtfK13 + mtfK14 + mtfK15 + mtfK16 + mtfK17 + mtfK18 + mtfK19 + mtfK20 + mtfK21 + mtfK22 + mtfK23 + mtfK24 + mtfK25 + mtfK26 + mtfK27 + mtfK28 + mtfK29 + mtfK30 + mtfK31 + mtfK32) : na
+plot(series=mtfRes1, title="Power Level 1 ", color=color.new(#00E5C4, 0), style=plot.style_line)
+
+//
+
+a_2 = normalize(a2, 0, 100)
+a_3 = normalize(a3, 0, 100)
+a_4 = normalize(a4, 0, 100)
+a_5 = normalize(a5, 0, 100)
+a_6 = normalize(a6, 0, 100)
+a_7 = normalize(a7, 0, 100)
+a_8 = normalize(a8, 0, 100)
+a_9 = normalize(a9, 0, 100)
+a_10 = normalize(a10, 0, 100)
+a_11 = normalize(a11, 0, 100)
+a_12 = normalize(a12, 0, 100)
+a_13 = normalize(a13, 0, 100)
+a_14 = normalize(a14, 0, 100)
+a_15 = normalize(a15, 0, 100)
+a_16 = normalize(a16, 0, 100)
+a_17 = normalize(a17, 0, 100)
+a_18 = normalize(a18, 0, 100)
+a_19 = normalize(a19, 0, 100)
+a_20 = normalize(a20, 0, 100)
+a_21 = normalize(a21, 0, 100)
+a_22 = normalize(a22, 0, 100)
+a_23 = normalize(a23, 0, 100)
+a_24 = normalize(a24, 0, 100)
+a_25 = normalize(a25, 0, 100)
+a_26 = normalize(a26, 0, 100)
+a_27 = normalize(a27, 0, 100)
+a_28 = normalize(a28, 0, 100)
+a_29 = normalize(a29, 0, 100)
+a_30 = normalize(a30, 0, 100)
+a_31 = normalize(a31, 0, 100)
+a_32 = normalize(a32, 0, 100)
+
+//plot(a2)
+//plot(a3)
+//plot(a4)
+//plot(a5)
+///plot(a6)
+//plot(a7)
+//plot(a8)
+//plot(a9)
+//plot(a10)
+//plot(a11)
+//plot(a12)
+//plot(a13)
+//plot(a14)
+//plot(a15)
+//plot(a16)
+//plot(a17)
+//plot(a18)
+//plot(a19)
+//plot(a20)
+//plot(a21)
+//plot(a22)
+//plot(a23)
+//plot(a24)
+//plot(a25)
+//plot(a26)
+//plot(a27)
+//plot(a28)
+//plot(a29)
+//plot(a30)
+//plot(a31)
+//plot(a32)

@@ -1,0 +1,175 @@
+//@version=5
+//      XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                                      xxxxxxxxxxxxxxxxxxxxxxxxxx
+//          XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                              xxxxxxxxxxxxxxxxxxxxxxxxxx
+//              XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                      xxxxxxxxxxxxxxxxxxxxxxxxxx
+//                  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                              xxxxxxxxxxxxxxxxxxxxxxxxxx
+//                      XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                      xxxxxxxxxxxxxxxxxxxxxxxxxx
+//                          XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX              xxxxxxxxxxxxxxxxxxxxxxxxxx
+//                              XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX      xxxxxxxxxxxxxxxxxxxxxxxxxx
+//                                  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX      xxxxxxxxxxxxxxxxxx
+//                                      XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX      xxxxxxxxxx
+//                                          XXX.....X....X....X..XX:X...XX      xx 
+//                                              X:XXX:..:X:...X:X.X:X:XX.XXXXX  
+//                                          XXXXX:XXX:  .X:...X:XX..X:..XX      xx
+//                                      XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX      xxxxxxxxxx
+//                                  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX      xxxxxxxxxxxxxxxxxx
+//                              XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX      xxxxxxxxxxxxxxxxxxxxxxxxxx
+//                          XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX              xxxxxxxxxxxxxxxxxxxxxxxxxx
+//                      XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                      xxxxxxxxxxxxxxxxxxxxxxxxxx
+//              XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                  xxxxxxxxxxxxxxxxxxxxxxxxxx
+//          XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                          xxxxxxxxxxxxxxxxxxxxxxxxxx
+//      XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                                  xxxxxxxxxxxxxxxxxxxxxxxxxx
+//
+
+indicator("Leading Industry [TrendX__]", overlay=false)
+
+
+
+//// ____ Define index for Industry indicies ____ ////
+
+//Input
+index_src = input.source(title = "Price source for each index", group = "TSI Setting"        , defval = hlc3  )
+rsiLength = input(       title = "RSI Length"                 , group = "TSI Setting"        , defval = 25    )
+emaLength = input(       title = "EMA Length"                 , group = "TSI Setting"        , defval = 13    )
+ITindex   = input.symbol(title = ""                           , group = "Technology Index"   , defval="VNIT"  )
+FINindex  = input.symbol(title = ""                           , group = "Finance Index"      , defval="VNFIN" )
+INDindex  = input.symbol(title = ""                           , group = "Industrial Index"   , defval="VNIND" )
+ENEindex  = input.symbol(title = ""                           , group = "Energy Index"       , defval="VNENE" )
+REALindex = input.symbol(title = ""                           , group = "Real-estate Index"  , defval="VNREAL")
+CONSindex = input.symbol(title = ""                           , group = "Constructions Index", defval="VNCONS")
+
+
+//Setting True Strength Index (TSI) function
+tsiFunc(source) =>
+    mom         = ta.change(source)
+    absMom      = math.abs(mom)
+    rsi         = ta.rma(mom, rsiLength) / ta.rma(absMom, rsiLength)
+    tsi         = ta.ema(ta.ema(rsi, emaLength), emaLength) * 100
+    tsi
+
+//Define TSI for each Industry index
+vnit   = request.security(ITindex  , "D", tsiFunc(index_src))
+vnfin  = request.security(FINindex , "D", tsiFunc(index_src))
+vnind  = request.security(INDindex , "D", tsiFunc(index_src))
+vnene  = request.security(ENEindex , "D", tsiFunc(index_src))
+vnreal = request.security(REALindex, "D", tsiFunc(index_src))
+vncons = request.security(CONSindex, "D", tsiFunc(index_src))
+
+//Define conditions for Leading Industry index
+vnit_Condition   = vnit   > vnfin and vnit   > vnind and vnit   > vnene and vnit   > vnreal and vnit   > vncons
+vnfin_Condition  = vnfin  > vnit  and vnfin  > vnind and vnfin  > vnene and vnfin  > vnreal and vnfin  > vncons
+vnind_Condition  = vnind  > vnit  and vnind  > vnfin and vnind  > vnene and vnind  > vnreal and vnind  > vncons
+vnene_Condition  = vnene  > vnit  and vnene  > vnfin and vnene  > vnind and vnene  > vnreal and vnene  > vncons
+vnreal_Condition = vnreal > vnit  and vnreal > vnfin and vnreal > vnind and vnreal > vnene  and vnreal > vncons
+vncons_Condition = vncons > vnit  and vncons > vnfin and vncons > vnind and vncons > vnene  and vncons > vnreal
+
+//Colors for each Industry index
+vnitcss   = color.rgb(34, 163, 255)
+vnfincss  = color.rgb(255, 0, 225 )
+vnindcss  = color.rgb(255, 230, 0 )
+vnenecss  = color.rgb(34, 255, 0  )
+vnrealcss = color.rgb(255, 94, 0  )
+vnconscss = color.rgb(97, 70, 0   )
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+//// ____ Pie Plotting ____ ////
+
+//Input
+xy                   = array.new<chart.point>()
+var       outline    = array.new<polyline>(6,na)
+var color pie_color  = na
+var float l_angle    = na
+var float r_angle    = na
+var int   x1         = na
+var float y1         = na
+
+//Setting Pie function
+pieFunc(pie_color, l_angle, r_angle) =>
+    int ls                           = math.round((l_angle + 180) / 0.1) 
+    int rs                           = math.round((r_angle + 180) / 0.1) 
+    pie                              = xy.slice(ls, rs)
+    pie.push(chart.point.from_index(bar_index, 0))
+    outline.pop().delete()
+    outline.unshift(polyline.new(pie, false, true, line_color = color.new(pie_color, 50), fill_color = color.new(pie_color, 50)))
+    pie
+
+//Draw Industry slices in Pie
+if barstate.islast
+    for pie_range      = 0.0 to 360 by 0.1
+        x2             = bar_index + math.round(100 * math.sin(math.toradians(pie_range)))
+        y2             = 100 * math.cos(math.toradians(pie_range))
+        xy.push(chart.point.from_index(x1, y1))
+        xy.push(chart.point.from_index(x2, y2))
+        x1           := x2
+        y1           := y2
+    pie_Color         = array.from(
+     color.rgb(34, 163, 255),
+     color.rgb(255, 0, 225 ),
+     color.rgb(255, 230, 0 ),
+     color.rgb(34, 255, 0  ),
+     color.rgb(255, 94, 0  ),
+     color.rgb(97, 70, 0   ))
+    int   total_slice = 6
+    float slice_angle = 360 / total_slice
+    for pie_range     = 0 to total_slice -1
+        l_Angle       = 0.0 + (pie_range * slice_angle)
+        r_Angle       = l_Angle + slice_angle
+        pieFunc(pie_Color.get(pie_range), l_Angle, r_Angle)
+
+//Label Industry slices in Pie
+it   = label.new(bar_index  + 135, -30, color = color(na), text = "Technology"   , textcolor = vnitcss  , style = label.style_label_right)
+label.delete(    it[1])
+fin  = label.new(bar_index  + 105, -80, color = color(na), text = "Finance"      , textcolor = vnfincss , style = label.style_label_right)
+label.delete(    fin[1])
+ind  = label.new(bar_index  + 45, -110, color = color(na), text = "Industrial"   , textcolor = vnindcss , style = label.style_label_right)
+label.delete(    ind[1])
+ene  = label.new(bar_index  - 15, -110, color = color(na), text = "Energy"       , textcolor = vnenecss , style = label.style_label_right)
+label.delete(    ene[1])
+real = label.new(bar_index  - 75,  -80, color = color(na), text = "Real-estate"  , textcolor = vnrealcss, style = label.style_label_right)
+label.delete(    real[1])
+cons = label.new(bar_index  - 105, -30, color = color(na), text = "Constructions", textcolor = vnconscss, style = label.style_label_right)
+label.delete(    cons[1])
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+//// ____ Pie Labelling ____ ////
+
+//Input
+var float targetAngle = na
+var color vncolor     = na
+var line leadingline  = na
+
+//Define the arrow point for Leading Industry
+if vnit_Condition
+    targetAngle := 105.0
+    vncolor     := vnitcss
+else if vnfin_Condition
+    targetAngle := 135.0
+    vncolor     := vnfincss
+else if vnind_Condition
+    targetAngle := 165.0
+    vncolor     := vnindcss
+else if vnene_Condition
+    targetAngle := 195.0
+    vncolor     := vnenecss
+else if vnreal_Condition
+    targetAngle := 225.0
+    vncolor     := vnrealcss
+else if vncons_Condition
+    targetAngle := 255.0
+    vncolor     := vnconscss
+
+//Draw the arrow for Leading Industry
+if not na(targetAngle)
+    x            = bar_index + math.round(90 * math.sin(math.toradians(targetAngle)))
+    y            = 100 * math.cos(math.toradians(targetAngle))
+    leadingline := line.new(bar_index, 0, x, y, color=color.white, width=3, style=line.style_arrow_right)
+    line.delete(leadingline[1])
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+

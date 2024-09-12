@@ -1,0 +1,179 @@
+
+//@version=5
+
+indicator("Rin-Din MtF Multi-length", timeframe="")
+
+//constants
+
+src = input(close, title="Source")
+
+trigger = input(1.25)
+
+n = input(65)
+
+mtflen1 = input(100, title="mtflen1")
+mtflen2 = input(200, title="mtflen2") 
+mtflen3 = input(300, title="mtflen3")
+mtflen4 = input(400, title="mtflen4")
+mtflen5 = input(500, title="mtflen5")
+
+// mtf
+
+displayMTF1 = input.bool(title="Display MTF 15?", defval=false)
+displayMTF2 = input.bool(title="Display MTF 30?", defval=false)
+displayMTF3 = input.bool(title="Display MTF 60?", defval=false)
+displayMTF4 = input.bool(title="Display MTF 240?", defval=false)
+displayMTF5 = input.bool(title="Display MTF 480?", defval=false)
+displayMTF6 = input.bool(title="Display MTF D?", defval=false)
+displayMTF7 = input.bool(title="Display MTF W?", defval=false)
+
+res1 = input.timeframe(title="Multi Timeframe 1:", defval="15")
+res2 = input.timeframe(title="Multi Timeframe 2:", defval="30")
+res3 = input.timeframe(title="Multi Timeframe 3:", defval="60")
+res4 = input.timeframe(title="Multi Timeframe 4:", defval="240")
+res5 = input.timeframe(title="Multi Timeframe 5:", defval="480")
+res6 = input.timeframe(title="Multi Timeframe 6:", defval="D")
+res7 = input.timeframe(title="Multi Timeframe 7:", defval="W")
+
+displayAVG1 = input.bool(title="Display Avg 1?", defval=false)
+displayAVG2 = input.bool(title="Display Avg 2?", defval=false)
+displayAVG3 = input.bool(title="Display Avg 3?", defval=false)
+displayAVG4 = input.bool(title="Display Avg 4?", defval=false)
+displayAVG5 = input.bool(title="Display Avg 5?", defval=false)
+displayAVG6 = input.bool(title="Display Avg 6?", defval=false)
+displayAVG7 = input.bool(title="Display MAvg 7", defval=false)
+
+displayAllAvgs = input.bool(title="Display All Avgs", defval=false)
+
+// indi
+
+ri = math.log(close/close[1])
+Rin = math.log(close/close[n])
+Nin = (math.sum(math.abs(ri),n))/(math.abs(Rin)/n)
+Din = math.log(Nin)/math.log(n)
+
+// func
+
+rindin(src, length) =>
+    ri = math.log(close/close[1])
+    Rin = math.log(close/close[length])
+    Nin = (math.sum(math.abs(ri),length))/(math.abs(Rin)/length)
+    Din = math.log(Nin)/math.log(length)
+
+// mtf
+
+mtfK1 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, mtflen1)) : na
+mtfK11 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, mtflen2)) : na
+mtfK111 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, mtflen3)) : na
+mtfK1111 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, mtflen4)) : na
+mtfK11111 = displayMTF1 ? request.security(syminfo.tickerid, res1, rindin(src, mtflen5)) : na
+
+mtfK2 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, mtflen1)) : na
+mtfK22 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, mtflen2)) : na
+mtfK222 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, mtflen3)) : na
+mtfK2222 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, mtflen4)) : na
+mtfK22222 = displayMTF2 ? request.security(syminfo.tickerid, res2, rindin(src, mtflen5)) : na
+
+mtfK3 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, mtflen1)) : na
+mtfK33 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, mtflen2)) : na
+mtfK333 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, mtflen3)) : na
+mtfK3333 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, mtflen4)) : na
+mtfK33333 = displayMTF3 ? request.security(syminfo.tickerid, res3, rindin(src, mtflen5)) : na
+
+mtfK4 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, mtflen1)) : na
+mtfK44 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, mtflen2)) : na
+mtfK444 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, mtflen3)) : na
+mtfK4444 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, mtflen4)) : na
+mtfK44444 = displayMTF4 ? request.security(syminfo.tickerid, res4, rindin(src, mtflen5)) : na
+
+mtfK5 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, mtflen1)) : na
+mtfK55 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, mtflen2)) : na
+mtfK555 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, mtflen3)) : na
+mtfK5555 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, mtflen4)) : na
+mtfK55555 = displayMTF5 ? request.security(syminfo.tickerid, res5, rindin(src, mtflen5)) : na
+
+mtfK6 = displayMTF6 ? request.security(syminfo.tickerid, res6, rindin(src, mtflen1)) : na
+mtfK66 = displayMTF6 ? request.security(syminfo.tickerid, res6, rindin(src, mtflen2)) : na
+mtfK666 = displayMTF6 ? request.security(syminfo.tickerid, res6, rindin(src, mtflen3)) : na
+mtfK6666 = displayMTF6 ? request.security(syminfo.tickerid, res6, rindin(src, mtflen4)) : na
+mtfK66666 = displayMTF6 ? request.security(syminfo.tickerid, res6, rindin(src, mtflen5)) : na
+
+mtfK7 = displayMTF7 ? request.security(syminfo.tickerid, res7, rindin(src, mtflen1)) : na
+mtfK77 = displayMTF7 ? request.security(syminfo.tickerid, res7, rindin(src, mtflen2)) : na
+mtfK777 = displayMTF7 ? request.security(syminfo.tickerid, res7, rindin(src, mtflen3)) : na
+mtfK7777 = displayMTF7 ? request.security(syminfo.tickerid, res7, rindin(src, mtflen4)) : na
+mtfK77777 = displayMTF7 ? request.security(syminfo.tickerid, res7, rindin(src, mtflen5)) : na
+
+//plot
+
+plot(Din)
+plot(trigger, color=color.new(color.red, 40))
+
+BarColorz = Din <= trigger ? color.red : color.black
+barcolor(BarColorz)
+
+plot(mtfK1, style=plot.style_stepline, color=color.purple, linewidth=1)
+plot(mtfK11, style=plot.style_stepline, color=color.purple, linewidth=1)
+plot(mtfK111, style=plot.style_stepline, color=color.purple, linewidth=1)
+plot(mtfK1111, style=plot.style_stepline, color=color.purple, linewidth=1)
+plot(mtfK11111, style=plot.style_stepline, color=color.purple, linewidth=1)
+
+plot(mtfK2, style=plot.style_stepline, color=color.blue, linewidth=1)
+plot(mtfK22, style=plot.style_stepline, color=color.blue, linewidth=1)
+plot(mtfK222, style=plot.style_stepline, color=color.blue, linewidth=1)
+plot(mtfK2222, style=plot.style_stepline, color=color.blue, linewidth=1)
+plot(mtfK22222, style=plot.style_stepline, color=color.blue, linewidth=1)
+
+plot(mtfK3, style=plot.style_stepline, color=color.green, linewidth=1)
+plot(mtfK33, style=plot.style_stepline, color=color.green, linewidth=1)
+plot(mtfK333, style=plot.style_stepline, color=color.green, linewidth=1)
+plot(mtfK3333, style=plot.style_stepline, color=color.green, linewidth=1)
+plot(mtfK33333, style=plot.style_stepline, color=color.green, linewidth=1)
+
+plot(mtfK4, style=plot.style_stepline, color=color.white, linewidth=1)
+plot(mtfK44, style=plot.style_stepline, color=color.white, linewidth=1)
+plot(mtfK444, style=plot.style_stepline, color=color.white, linewidth=1)
+plot(mtfK4444, style=plot.style_stepline, color=color.white, linewidth=1)
+plot(mtfK44444, style=plot.style_stepline, color=color.white, linewidth=1)
+
+plot(mtfK5, style=plot.style_stepline, color=color.yellow, linewidth=1)
+plot(mtfK55, style=plot.style_stepline, color=color.yellow, linewidth=1)
+plot(mtfK555, style=plot.style_stepline, color=color.yellow, linewidth=1)
+plot(mtfK5555, style=plot.style_stepline, color=color.yellow, linewidth=1)
+plot(mtfK55555, style=plot.style_stepline, color=color.yellow, linewidth=1)
+
+plot(mtfK6, style=plot.style_stepline, color=color.orange, linewidth=1)
+plot(mtfK66, style=plot.style_stepline, color=color.orange, linewidth=1)
+plot(mtfK666, style=plot.style_stepline, color=color.orange, linewidth=1)
+plot(mtfK6666, style=plot.style_stepline, color=color.orange, linewidth=1)
+plot(mtfK66666, style=plot.style_stepline, color=color.orange, linewidth=1)
+
+plot(mtfK7, style=plot.style_stepline, color=color.red, linewidth=1)
+plot(mtfK77, style=plot.style_stepline, color=color.red, linewidth=1)
+plot(mtfK777, style=plot.style_stepline, color=color.red, linewidth=1)
+plot(mtfK7777, style=plot.style_stepline, color=color.red, linewidth=1)
+plot(mtfK77777, style=plot.style_stepline, color=color.red, linewidth=1)
+
+// Avgs etc
+
+Avg7 = displayAVG7 ? ((mtfK7+mtfK77+mtfK777+mtfK7777+mtfK77777) / 5) : na
+Avg6 = displayAVG6 ? (mtfK6+mtfK66+mtfK666+mtfK6666+mtfK66666) / 5 : na
+Avg5 = displayAVG5 ? (mtfK5+mtfK55+mtfK555+mtfK5555+mtfK55555) / 5 : na
+Avg4 = displayAVG4 ? (mtfK4+mtfK44+mtfK444+mtfK4444+mtfK44444) / 5 : na
+Avg3 = displayAVG3 ? (mtfK3+mtfK33+mtfK333+mtfK3333+mtfK33333) / 5 : na
+Avg2 = displayAVG2 ? (mtfK2+mtfK22+mtfK222+mtfK2222+mtfK22222) / 5 : na
+Avg1 = displayAVG1 ? (mtfK1+mtfK11+mtfK111+mtfK1111+mtfK11111) / 5 : na
+
+GatheredAvgs = displayAllAvgs ? (Avg1 + Avg2 + Avg3 + Avg4 + Avg5 + Avg6 + Avg7) / 7 : na
+
+// plots
+
+plot(Avg7, style=plot.style_stepline, color=color.purple, linewidth=1)
+plot(Avg6, style=plot.style_stepline, color=color.blue, linewidth=1)
+plot(Avg5, style=plot.style_stepline, color=color.green, linewidth=1)
+plot(Avg4, style=plot.style_stepline, color=color.white, linewidth=1)
+plot(Avg3, style=plot.style_stepline, color=color.yellow, linewidth=1)
+plot(Avg2, style=plot.style_stepline, color=color.orange, linewidth=1)
+plot(Avg1, style=plot.style_stepline, color=color.red, linewidth=1)
+
+plot(GatheredAvgs, style=plot.style_stepline, color=color.white, linewidth=1)

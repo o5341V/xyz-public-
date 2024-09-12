@@ -1,0 +1,80 @@
+//@version=5
+indicator("Fisher Transform", timeframe="",overlay=true)
+
+//VIX = request.security(, timeframe.period, close)
+
+//Function
+
+//sHigh = request.security(syminfo.tickerid , timeframe.period, high, barmerge.gaps_on, barmerge.lookahead_on)
+//sLow = request.security(syminfo.tickerid , timeframe.period, low, barmerge.gaps_on, barmerge.lookahead_on)
+
+// vix
+
+sHigh = request.security("1/TVC:VIX", timeframe.period, high, barmerge.gaps_on, barmerge.lookahead_on)
+sLow = request.security("1/TVC:VIX", timeframe.period, low, barmerge.gaps_on, barmerge.lookahead_on)
+
+//
+_src = (sHigh + sLow) / 2
+//
+// Inputs
+
+f_fisher(_src, _window) =>
+    min_Median = ta.lowest(_src, _window)
+    max_Median = ta.highest(_src, _window)
+    temp = (_src - min_Median) / (max_Median - min_Median)
+    value = 0.0
+    value := .5 * 2 * ((temp - .5) + (.5 * nz(value[1])))
+    value1 = value >= .9999 ? .9999 : value <= -.9999 ? -.9999 : value
+    temp2 = (1 + value1) / (1 - value1)
+    fisher_Value = 0.0
+    fisher_Value := (.25 * math.log(temp2)) + (.5 * nz(fisher_Value[1]))
+    fisher_Value
+
+Fish1 = f_fisher(_src, 5)
+Fish2 = f_fisher(_src, 10)
+Fish3 = f_fisher(_src, 14)
+Fish4 = f_fisher(_src, 21)
+Fish5 = f_fisher(_src, 34)
+Fish6 = f_fisher(_src, 52)
+Fish7 = f_fisher(_src, 89)
+Fish8 = f_fisher(_src, 155)
+Fish9 = f_fisher(_src, 252)
+
+hist = (Fish1 + Fish2 + Fish3 + Fish4 + Fish5 + Fish6 + Fish7 + Fish8 + Fish9) /9
+
+//plot(hist, title="Histogram", style=plot.style_columns, color=#999999)
+
+top = f_fisher(_src,5) <= -3 ? 1 : 0
+top1 = f_fisher(_src,10) <= -2 ? 1 : 0
+top11 = f_fisher(_src,15) <= -2 ? 1 : 0
+top111 = f_fisher(_src,21) <= -1 ? 1 : 0
+top1111 = f_fisher(_src,42) <= -1 ? 1 : 0
+top11111 = f_fisher(_src,63) <= -1 ? 1 : 0
+top111111 = f_fisher(_src,84) <= -0 ? 1 : 0
+top1111111 = f_fisher(_src,252) <= -0 ? 1 : 0
+
+Trust = (top + top1 + top11 + top111 + top1111 + top11111 + top111111 + top1111111) 
+
+Thresh = input(4)
+colorofTrust = Trust > Thresh ? color.red : color.gray
+
+xyzTcolor = Trust[1] > Thresh ? color.black : Trust[1] > Thresh and Trust <= Thresh ? color.red : color.white
+
+xyzT = Trust[1] > Thresh and Trust <= Thresh
+
+plot(series=Trust, title="Bull Power Level", color = colorofTrust, style=plot.style_columns)
+
+barcolor(xyzTcolor)
+
+plotshape(xyzT, color=color.red, style=shape.circle, location=location.belowbar, size=size.tiny, textcolor=color.white, transp=10)
+
+//plot(Fish1, color = color.maroon, transp = 0)
+//plot(Fish2, color = color.purple, transp = 0)
+//plot(Fish3, color = color.fuchsia, transp = 0)
+//plot(Fish4, color = color.blue, transp = 0)
+//plot(Fish5, color = color.aqua, transp = 0)
+//plot(Fish6, color = color.green, transp = 0)
+//plot(Fish7, color = color.yellow, transp = 0)
+//plot(Fish8, color = color.orange, transp = 0)
+//plot(Fish9, color = color.red, transp = 0)
+
