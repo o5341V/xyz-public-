@@ -1,0 +1,54 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Uni_ve12se
+
+//@version=4
+study(title="Ralph Haller Transformation Suite", shorttitle="Ralph Haller Transformation Suite", format=format.price, precision=5, resolution="")
+
+//import = input(close)
+
+switcher = input(title="Source", options = ["Mean", "Close", "Custom Series"], defval="Mean")
+p = switcher=="Mean" ? hl2 : switcher=="Close" ? close : switcher=="Custom Series" ? close > open ? (high+close)/2 : low : na
+
+len = input(6, minval=1, title="Scope")
+len2 = input(55, minval=1, title="Scope2")
+k = input(10)
+bias = input(1, "Bias")
+lambda = input(3, "Lambda")
+
+high_ = highest(atan(sqrt(high)), len/bias)
+high_2 = highest(atan(sqrt(high)), len2/bias)
+low_ = lowest(atan(sqrt(low)), len)
+low_2 = lowest(atan(sqrt(low)), len2)
+value = 0.0
+value := .66 * ((atan(sqrt(p)) - low_) / (high_ - low_) - .5) + .67 * nz(value[1])
+values = 0.0
+values := .66 * ((atan(sqrt(p)) - low_2) / (high_2 - low_2) - .5) + .67 * nz(values[1])
+// Transformations
+
+// Fisher's z Transformation
+fisher = 1/k * log((1 + value) / (1 - value))
+fisher2 = 1/k * log((1 + values) / (1 - values))
+weightedZ = fisher*(log(hl2+100))
+weightedZ2 = fisher2*(log(hl2))
+
+// Box-Cox Transformation
+BoxCoxTransform = (pow(value, lambda)-1) / lambda
+
+// Yeo-Johnson Transformation
+yjInput = value
+YeoJohnsonTransform = lambda != 0 and yjInput >= 0 ? (pow((yjInput+1), lambda) - 1) / lambda : lambda == 0 and yjInput >= 0 ? log(yjInput + 1) : lambda != 2 and yjInput < 0 ? -(pow((-yjInput + 1), 2-lambda)-1) / (2 - lambda) : lambda == 2 and yjInput < 0 ? -log(-yjInput + 1) : na
+YeoJohnsonColors = lambda != 0 and yjInput >= 0 ? color.orange : lambda == 0 and yjInput >= 0 ? color.yellow : lambda != 2 and yjInput ? color.blue : lambda == 2 and yjInput < 0 ? color.red : na
+
+plot(YeoJohnsonTransform, color=YeoJohnsonColors, title="Yeo-Johnson Transformation", display=display.none)
+plot(BoxCoxTransform, color=#b1ac80, title="Box-Cox Transformation", display=display.none)
+
+plot(fisher2, color=#81c784, style=plot.style_histogram, transp=50, title="Fisher z", display=display.none)
+plot(fisher, color=color.lime, title="Fisher z", display=display.none)
+
+plot(weightedZ2, color=#81c784,style=plot.style_histogram, transp=50, title="Weighted Fisher z")
+plot(weightedZ, color=#81c784, title="Weighted Fisher z")
+
+
+//difference = fisher-import
+
+//plot(difference)

@@ -1,0 +1,175 @@
+//@version=5
+indicator("Weekly Price Action Statistics with Custom Lookback", overlay=false)
+
+// User-defined input for lookback period
+lookback_period = input.int(30, title="Lookback Period (days)")
+
+// Initialize arrays to store daily statistics for positive and negative days
+var float[] pos_day_returns = array.new_float(7, 0.0)
+var float[] pos_day_gains = array.new_float(7, 0.0)
+var float[] pos_day_volumes = array.new_float(7, 0.0)
+
+var float[] neg_day_returns = array.new_float(7, 0.0)
+var float[] neg_day_losses = array.new_float(7, 0.0)
+var float[] neg_day_volumes = array.new_float(7, 0.0)
+
+// Initialize arrays to store average, maximum, and median moves for positive and negative days
+var float[] pos_avg_moves_global = array.new_float(7, na)
+var float[] pos_max_moves_global = array.new_float(7, na)
+var float[] pos_median_moves_global = array.new_float(7, na)
+
+var float[] neg_avg_moves_global = array.new_float(7, na)
+var float[] neg_max_moves_global = array.new_float(7, na)
+var float[] neg_median_moves_global = array.new_float(7, na)
+
+// Initialize nested arrays using single-dimensional array
+var float[] pos_day_ranges = array.new_float(7 * 100, na)
+var float[] neg_day_ranges = array.new_float(7 * 100, na)
+
+// Function to update daily statistics
+updateDailyStats(day_of_week, return_today, range_today, volume_today) =>
+    if (return_today > 0)
+        array.set(pos_day_gains, day_of_week - 1, array.get(pos_day_gains, day_of_week - 1) + 1)
+        array.set(pos_day_returns, day_of_week - 1, array.get(pos_day_returns, day_of_week - 1) + return_today)
+        array.set(pos_day_volumes, day_of_week - 1, array.get(pos_day_volumes, day_of_week - 1) + volume_today)
+        for i = 0 to 98  // Corrected loop to avoid out of bounds error
+            array.set(pos_day_ranges, (day_of_week - 1) * 100 + i, array.get(pos_day_ranges, (day_of_week - 1) * 100 + i + 1))
+        array.set(pos_day_ranges, (day_of_week - 1) * 100 + 99, range_today)
+    else
+        array.set(neg_day_losses, day_of_week - 1, array.get(neg_day_losses, day_of_week - 1) + 1)
+        array.set(neg_day_returns, day_of_week - 1, array.get(neg_day_returns, day_of_week - 1) + return_today)
+        array.set(neg_day_volumes, day_of_week - 1, array.get(neg_day_volumes, day_of_week - 1) + volume_today)
+        for i = 0 to 98  // Corrected loop to avoid out of bounds error
+            array.set(neg_day_ranges, (day_of_week - 1) * 100 + i, array.get(neg_day_ranges, (day_of_week - 1) * 100 + i + 1))
+        array.set(neg_day_ranges, (day_of_week - 1) * 100 + 99, range_today)
+
+// Calculate statistics
+calculateStats() =>
+    var float[] pos_avg_returns = array.new_float(7, na)
+    var float[] pos_avg_volumes = array.new_float(7, na)
+    var float[] pos_pct_positive = array.new_float(7, na)
+    var float[] neg_avg_returns = array.new_float(7, na)
+    var float[] neg_avg_volumes = array.new_float(7, na)
+    var float[] neg_pct_positive = array.new_float(7, na)
+    var float[] pos_avg_moves = array.new_float(7, na)
+    var float[] pos_max_moves = array.new_float(7, na)
+    var float[] pos_median_moves = array.new_float(7, na)
+    var float[] neg_avg_moves = array.new_float(7, na)
+    var float[] neg_max_moves = array.new_float(7, na)
+    var float[] neg_median_moves = array.new_float(7, na)
+
+    for i = 0 to 6
+        pos_gains = array.get(pos_day_gains, i)
+        neg_losses = array.get(neg_day_losses, i)
+        total_days = pos_gains + neg_losses
+
+        if total_days > 0
+            pos_total_days = pos_gains
+            neg_total_days = neg_losses
+
+            if pos_total_days > 0
+                // Calculate average returns, volumes, and positivity percentage for positive days
+                pos_avg_return = array.get(pos_day_returns, i) / pos_total_days
+                pos_avg_volume = array.get(pos_day_volumes, i) / pos_total_days
+                pos_pct_pos = (pos_gains / total_days) * 100
+                array.set(pos_avg_returns, i, pos_avg_return)
+                array.set(pos_avg_volumes, i, pos_avg_volume)
+                array.set(pos_pct_positive, i, pos_pct_pos)
+
+                // Handle ranges for positive days
+                pos_ranges_clean = array.new_float(0)
+                for j = 0 to 99
+                    if not na(array.get(pos_day_ranges, i * 100 + j))
+                        array.push(pos_ranges_clean, array.get(pos_day_ranges, i * 100 + j))
+                if array.size(pos_ranges_clean) > 0
+                    avg_move = array.sum(pos_ranges_clean) / array.size(pos_ranges_clean)
+                    array.set(pos_avg_moves, i, avg_move)
+                    array.set(pos_max_moves, i, array.max(pos_ranges_clean))
+                    array.set(pos_median_moves, i, array.median(pos_ranges_clean))
+
+            if neg_total_days > 0
+                // Calculate average returns, volumes, and positivity percentage for negative days
+                neg_avg_return = array.get(neg_day_returns, i) / neg_total_days
+                neg_avg_volume = array.get(neg_day_volumes, i) / neg_total_days
+                neg_pct_pos = (neg_losses / total_days) * 100
+                array.set(neg_avg_returns, i, neg_avg_return)
+                array.set(neg_avg_volumes, i, neg_avg_volume)
+                array.set(neg_pct_positive, i, neg_pct_pos)
+
+                // Handle ranges for negative days
+                neg_ranges_clean = array.new_float(0)
+                for j = 0 to 99
+                    if not na(array.get(neg_day_ranges, i * 100 + j))
+                        array.push(neg_ranges_clean, array.get(neg_day_ranges, i * 100 + j))
+                if array.size(neg_ranges_clean) > 0
+                    avg_move = array.sum(neg_ranges_clean) / array.size(neg_ranges_clean)
+                    array.set(neg_avg_moves, i, avg_move)
+                    array.set(neg_max_moves, i, array.max(neg_ranges_clean))
+                    array.set(neg_median_moves, i, array.median(neg_ranges_clean))
+
+    [pos_avg_returns, pos_avg_volumes, pos_pct_positive, neg_avg_returns, neg_avg_volumes, neg_pct_positive, pos_avg_moves, pos_max_moves, pos_median_moves, neg_avg_moves, neg_max_moves, neg_median_moves]
+
+// Update daily statistics
+if (bar_index > lookback_period)
+    day_of_week = dayofweek(time)
+    return_today = (close - open) / open * 100
+    range_today = high - low
+    volume_today = volume
+    updateDailyStats(day_of_week, return_today, range_today, volume_today)
+
+// Get calculated statistics
+[pos_avg_returns, pos_avg_volumes, pos_pct_positive, neg_avg_returns, neg_avg_volumes, neg_pct_positive, pos_avg_moves, pos_max_moves, pos_median_moves, neg_avg_moves, neg_max_moves, neg_median_moves] = calculateStats()
+
+// Copy calculated statistics to global arrays
+for i = 0 to 6
+    array.set(pos_avg_moves_global, i, array.get(pos_avg_moves, i))
+    array.set(pos_max_moves_global, i, array.get(pos_max_moves, i))
+    array.set(pos_median_moves_global, i, array.get(pos_median_moves, i))
+    array.set(neg_avg_moves_global, i, array.get(neg_avg_moves, i))
+    array.set(neg_max_moves_global, i, array.get(neg_max_moves, i))
+    array.set(neg_median_moves_global, i, array.get(neg_median_moves, i))
+
+// Display statistics table on the chart
+table_id = table.new(position.top_right, 14, 13, border_width=1, border_color=color.gray) // Increased number of rows to 13
+table.cell(table_id, 0, 0, "Day", text_color=color.white)
+table.cell(table_id, 1, 0, "Sun", text_color=color.white)
+table.cell(table_id, 2, 0, "Mon", text_color=color.white)
+table.cell(table_id, 3, 0, "Tue", text_color=color.white)
+table.cell(table_id, 4, 0, "Wed", text_color=color.white)
+table.cell(table_id, 5, 0, "Thu", text_color=color.white)
+table.cell(table_id, 6, 0, "Fri", text_color=color.white)
+table.cell(table_id, 7, 0, "Sat", text_color=color.white)
+
+// Adding row labels
+table.cell(table_id, 0, 1, "Avg % Return (Pos)", text_color=color.white)
+table.cell(table_id, 0, 2, "Avg % Return (Neg)", text_color=color.white)
+table.cell(table_id, 0, 3, "Avg Volume (Pos)", text_color=color.white)
+table.cell(table_id, 0, 4, "Avg Volume (Neg)", text_color=color.white)
+table.cell(table_id, 0, 5, "% Positive", text_color=color.white)
+table.cell(table_id, 0, 6, "% Negative", text_color=color.white)
+table.cell(table_id, 0, 7, "Avg Move (Pos)", text_color=color.white)
+table.cell(table_id, 0, 8, "Avg Move (Neg)", text_color=color.white)
+table.cell(table_id, 0, 9, "Max Move (Pos)", text_color=color.white)
+table.cell(table_id, 0, 10, "Max Move (Neg)", text_color=color.white)
+table.cell(table_id, 0, 11, "Median Move (Pos)", text_color=color.white)
+table.cell(table_id, 0, 12, "Median Move (Neg)", text_color=color.white)
+
+plotStatistics(row, data, pos_color, neg_color) =>
+    for i = 1 to 7
+        value = array.get(data, i - 1)
+        text_color = value >= 0 ? pos_color : neg_color
+        table.cell(table_id, i, row, str.tostring(value, "#.##"), text_color=text_color)
+
+// Plot statistics
+plotStatistics(1, pos_avg_returns, color.green, color.red)
+plotStatistics(2, neg_avg_returns, color.red, color.green)
+plotStatistics(3, pos_avg_volumes, color.blue, color.blue)
+plotStatistics(4, neg_avg_volumes, color.blue, color.blue)
+plotStatistics(5, pos_pct_positive, color.green, color.red)
+plotStatistics(6, neg_pct_positive, color.red, color.green)
+plotStatistics(7, pos_avg_moves_global, color.green, color.red)
+plotStatistics(8, neg_avg_moves_global, color.red, color.green)
+plotStatistics(9, pos_max_moves_global, color.green, color.red)
+plotStatistics(10, neg_max_moves_global, color.red, color.green)
+plotStatistics(11, pos_median_moves_global, color.blue, color.blue)
+plotStatistics(12, neg_median_moves_global, color.blue, color.blue)

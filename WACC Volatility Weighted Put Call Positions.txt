@@ -1,0 +1,50 @@
+//@WACC 
+//@version=5
+
+indicator('WACC Volatility Weighted PUT/CALL Positions', shorttitle='P/C Oscillator')
+
+VOL = math.pow(request.security('VIX', timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on), 1.0)
+
+// CALL VOLUME - SPX
+Longs = math.pow(request.security('CVSPX', timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on), 1.0)
+
+//PUT VOLUME - SPX
+Shorts = math.pow(request.security('PVSPX', timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on), 1.0)
+
+Spread = Longs / Shorts
+func = VOL / Spread
+
+func2 = ta.ema(func, 5)
+func3 = ta.stoch(func2, 100, 0, 10)
+funcplotcolor = func3 * func3
+
+
+func4 = ta.ema(func3, 12)
+
+func5 = func4 * func4
+
+redgreen = funcplotcolor >= 1972 ? color.lime : color.aqua
+
+//funcB = func - 2.58
+
+
+plotchar = ta.rsi(func5, 21)
+
+realplotchar = 1 - plotchar
+
+//funcnorm = funcB/1.57
+
+//positions = iff(funcplotcolor > 1972, 1,
+        // iff(funcplotcolor < 1972, -1, nz(positions[1], 0)))
+
+//barcolor(positions == -1 ? red: positions == 1 ? green : blue)
+
+colorUp = realplotchar > -30 ? #ff0000 : realplotchar < -80 ? #0000ff : #000000
+
+plot(realplotchar, title='SPX Vol Positions', style=plot.style_line, linewidth=1, color=colorUp)
+
+y = input(-50)
+x = input(-60)
+
+barcolor(realplotchar > y ? na : realplotchar < x ? color.green : na)
+

@@ -1,0 +1,42 @@
+//@version=5
+indicator('Wick(ed)', overlay=false, timeframe='')
+length = input.int(1, 'Length', minval=1)
+avgupperwick = ta.ema(close[1] <= open[1] ? high[1] - open[1] : high[1] - close[1], length)
+maxupperwick = ta.highest(close[1] <= open[1] ? high[1] - open[1] : high[1] - close[1], length)
+avglowerwick = ta.ema(close[1] > open[1] ? open[1] - low[1] : close[1] - low[1], length)
+maxlowerwick = ta.highest(close[1] > open[1] ? open[1] - low[1] : close[1] - low[1], length)
+maxlowerwicks = ta.lowest(close[1] > open[1] ? open[1] - low[1] : close[1] - low[1], length)
+
+//plot(avgupperwick, color=color.new(color.green, 0), title='AVG Upper Wick')
+//plot(maxupperwick, color=color.new(color.green, 0), title='MAX Upper Wick')
+
+//plot(maxlowerwick, color=color.new(color.red, 0), title='MAX Lower Wick')
+//plot(maxlowerwicks, color=color.new(color.red, 0), title='MAX Lower Wick')
+
+bbstd1 = input(2)
+bbstd2 = input(3)
+bbstd3 = input(4)
+
+[bbMiddle1, bbUpper1, bbLower1] = ta.bb(avglowerwick, input(252), bbstd1)
+[bbMiddle2, bbUpper2, bbLower2] = ta.bb(avglowerwick, input(252), bbstd2)
+[bbMiddle3, bbUpper3, bbLower3] = ta.bb(avglowerwick, input(252), bbstd3)
+
+plot(bbUpper1, color =color.yellow)
+
+plot(bbUpper2, color =color.orange)
+
+plot(bbUpper3, color =color.red)
+
+plot(avglowerwick, color=color.new(color.gray, 0),style=plot.style_histogram, title='AVG Lower Wick')
+
+BarColorz1 =  avglowerwick > bbUpper3  ? color.white : #434651
+plot(avglowerwick, color=BarColorz1, style=plot.style_cross, title='AVG Lower Wick')
+
+//
+
+show_cumulative_up = input(false)
+
+cum_wick_len = input(21, title = 'cumulative length')
+
+cumulative_lower_wick = show_cumulative_up ? ta.sma(avglowerwick, cum_wick_len) : na
+plot(cumulative_lower_wick, color=color.green)

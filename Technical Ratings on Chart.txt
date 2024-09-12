@@ -1,0 +1,433 @@
+// REUSING THIS CODE: You are welcome to reuse this code without permission, as long as it is used in open-source publications. Credits are appreciated.
+ 
+//@version=4
+study("Technical Ratings on Chart", "Ratings", true, precision = 2)
+
+// Technical Ratings On Chart
+//  v1.0, 2021.05.30 14:13 — LucF
+
+// This indicator is a Pine version of the TradingView "Technicals" rating gauge and the "Rating" indicator in the TradingView Screener.
+// It is a fork and refactoring of the code base used in the "Technical Ratings" built-in script.
+// It will produce identical results most of the time, but slight and variations are to be expected, as both use different code.
+// This version provides:
+//  • The current rating only, displayed on the chart in the position of your choice.
+//  • Non-repainting HTF values.
+//  • Control over repainting of the plotted values when no HTF is used.
+//  • Weighing of the Oscilators vs MAs balance in the calculation of the aggregate signal.
+
+// This code was written using the PineCoders Coding Conventions for Pine: http://www.pinecoders.com/coding_conventions/
+
+
+
+// ———————————————————— Constants, global arrays and inputs {
+
+// ————— Input `options` selections.
+var string RT1 = "MAs and Oscillators"
+var string RT2 = "MAs"
+var string RT3 = "Oscillators"
+
+var string ON  = "On"
+var string OFF = "Off"
+
+var string PS1 = "Columns"
+var string PS2 = "Histogram"
+var string PS3 = "Area"
+var string PS4 = "Line"
+
+// Levels determining "Strong Buy/Sell" and "Buy/Sell" ratings.
+var float LEVEL_STRONG = 0.5
+var float LEVEL_WEAK   = 0.1
+
+// Color constants.
+var color C_AQUA    = #0080FFff
+var color C_BLACK   = #000000ff
+var color C_BLUE    = color.blue
+var color C_CORAL   = #FF8080ff
+var color C_GOLD    = #CCCC00ff
+var color C_GRAY    = #808080ff
+var color C_GREEN   = #008000ff
+var color C_LIME    = #00FF00ff
+var color C_MAROON  = #800000ff
+var color C_ORANGE  = #FF8000ff
+var color C_PINK    = #FF0080ff
+var color C_RED     = #FF0000ff
+var color C_VIOLET  = #AA00FFff
+var color C_YELLOW  = #FFFF00ff
+var color C_WHITE   = #FFFFFFff
+
+var color C_NEUTRAL = #434650
+
+// ————— Global arrays
+// Array holding values for the 3 ratings in this order: All, MAs, Osc.
+var float[] ratings = array.new_float(3)
+// Array holding the text used as a legend in the displayed results.
+var string[] TEXTS = array.from("All", "MAs", "Osc")
+// Array holding the index into `ratings` and `texts` arrays determined by which rating user chooses to display.
+var int[] indices = array.new_int(3)
+
+// ————— Inputs
+var string GP1 = "Display"
+string  i_tableYpos = input("top",          "Position",                  inline = "11", options = ["top", "middle", "bottom"], group = GP1)
+string  i_tableXpos = input("right",        "",                          inline = "11", options = ["left", "center", "right"], group = GP1)
+int     i_height    = input(3,              "Height",                    inline = "12", minval = 1, maxval = 100, group = GP1)
+int     i_width     = input(7,              "Width",                     inline = "12", minval = 1, maxval = 100, tooltip = "1-100", group = GP1)
+color   i_c_text    = input(C_WHITE,        "Text",                      inline = "13", group = GP1)
+string  i_textSize  = input("normal",       "Size",                      inline = "13", options = ["tiny", "small", "normal", "large", "huge", "auto"], group = GP1)
+color   i_c_01      = input(C_LIME,         "Bull  ",                    inline = "14", tooltip = "Pick only one. These are preset colors, but you can modify anyone of them.", group = GP1)
+bool    i_01        = input(false,          "",                          inline = "14", group = GP1)
+color   i_c_02      = input(C_GOLD,         "",                          inline = "14", group = GP1)
+bool    i_02        = input(false,          "",                          inline = "14", group = GP1)
+color   i_c_03      = input(C_BLUE,         "",                          inline = "14", group = GP1)
+bool    i_03        = input(true,           "",                          inline = "14", group = GP1)
+color   i_c_04      = input(C_PINK,         "Bear   ",                   inline = "15", tooltip = "Pick only one. These are preset colors, but you can modify anyone of them.", group = GP1)
+bool    i_04        = input(false,          "",                          inline = "15", group = GP1)
+color   i_c_05      = input(C_VIOLET,       "",                          inline = "15", group = GP1)
+bool    i_05        = input(false,          "",                          inline = "15", group = GP1)
+color   i_c_06      = input(C_RED,          "",                          inline = "15", group = GP1)
+bool    i_06        = input(true,           "",                          inline = "15", group = GP1)
+color   i_c_neutral = input(C_NEUTRAL,      "Neutral",                   inline = "16", group = GP1)
+
+var string GP2 = "Calculations"
+string i_tf         = input("",             "Higher timeframe",          type = input.resolution, group = GP2, tooltip = "When using a higher timeframe, values do not repaint, which means that only values from COMPLETED timeframes are displayed.")
+bool   i_repaint    = input(ON,             "Repainting",                options = [ON, OFF], group = GP2, tooltip = "When NOT using a higher timeframe, setting this to 'Off' will show you the confirmed value from the last closed bar. This ensures the rating will not change during the current bar.") == ON
+string i_calcs      = input(RT1,            "Rating uses",               options = [RT2, RT3, RT1], group = GP2)
+float  i_weightMAs  = input(50,             "Weight of MAs (%)",         minval = 0, maxval = 100, step = 10, group = GP2, tooltip = "Determines the respective weight of MAs and Oscillators when both are used to calculate the overall rating. Equal weight for MAs and Oscillators is 50%. If you use 60% for MAs, then Oscillators weigh in at 40% of the overall rating.") / 100
+
+// Determine base bull/bear colors as per user selection.
+var color i_c_bull = i_01 ? i_c_01 : i_02 ? i_c_02 : i_03 ? i_c_03 : i_c_01
+var color i_c_bear = i_04 ? i_c_04 : i_05 ? i_c_05 : i_06 ? i_c_06 : i_c_04
+// }
+
+
+
+// ———————————————————— Functions {
+// RATINGS CALCULATION METHOD:
+// Individual ratings are one of four values:
+//  • +1 for bull bias.
+//  •  0 for neutral.
+//  • -1 for bear bias.
+//  • na when no value can be determined yet.
+// The average of all non-na values within each of the MAs and Oscillators groups determines the group's rating.
+// The overall rating is the average of the two group ratings.
+
+// ————— Helper functions.
+f_rising(_src)  => rising( _src, 1)
+f_falling(_src) => falling(_src, 1)
+f_trendUp() => close > ema(close, 50)
+f_trendDn() => close < ema(close, 50)
+f_notNa(_src) => not na(_src) and not na(_src[1])
+
+// ————— General MA rating (+1/0/-1) calculated using position of `_src` price with regards to `_ma`.
+f_ratingMa(_ma, _src)=> sign(_src - _ma)
+
+// ————— Converts bull/bear conditions into a +1/0/-1 value corresponding to a bull/neutral/bear bias.
+f_ratingBullBear(_bullCond, _bearCond) => na(_bullCond) or na(_bearCond) ? na : _bullCond ? 1 : _bearCond ? -1 : 0
+
+// ————— Ichimoku rating.
+f_donchian(_p) => avg(lowest(_p), highest(_p))
+f_ratingIchimoku()=>
+    float _conversion = f_donchian(9)
+    float _base = f_donchian(26)
+    float _lead1 = avg(_conversion, _base)
+    float _lead2 = f_donchian(52)
+    float _return = f_ratingBullBear(
+         _lead1 > _lead2 and close > _lead1 and close < _base and close[1] < _conversion and close > _conversion,
+         _lead2 > _lead1 and close < _lead2 and close > _base and close[1] > _conversion and close < _conversion)
+    if not (na(_lead1) or na(_lead2) or na(close) or na(close[1]) or na(_base) or na(_conversion))
+        _return
+    else
+        float(na)
+
+// ————— RSI rating.
+f_ratingRsi() =>
+    float _rsi = rsi(close,14)
+    float _return = f_ratingBullBear(_rsi < 30 and f_falling(_rsi), _rsi > 70 and f_rising(_rsi))
+    _return := f_notNa(_rsi) ? _return : na
+
+// ————— Stochastic rating.
+f_ratingStoch() =>
+    float _k = sma(stoch(close, high, low, 14), 3)
+    float _d = sma(_k, 3)
+    float _return = f_ratingBullBear(_k < 20 and _d < 20 and _k > _d and _k[1] < _d[1], _k > 80 and _d > 80 and _k < _d and _k[1] > _d[1])
+    _return := f_notNa(_k) and f_notNa(_d) ? _return : na
+
+// ————— CCI rating.
+f_ratingCci() =>
+    float _cci = cci(close, 20)
+    float _return = f_ratingBullBear(_cci < -100 and f_rising(_cci), _cci > 100 and f_falling(_cci))
+    _return := f_notNa(_cci) ? _return : na
+
+// ————— ADX rating.
+f_ratingAdx() =>
+    [_diPlus, _diMinus, _adx] = dmi(14, 14)
+    float _return = f_ratingBullBear(_adx > 20 and _diPlus[1] < _diMinus[1] and _diPlus > _diMinus, _adx > 20 and _diPlus[1] > _diMinus[1] and _diPlus < _diMinus)
+    _return := f_notNa(_diPlus) and f_notNa(_diMinus) and not na(_adx) ? _return : na
+
+// ————— Awesome Oscillator rating.
+f_ratingAo() =>
+    float _ao = sma(hl2, 5) - sma(hl2, 34)
+    bool _aoXUp = crossover(_ao, 0)
+    bool _aoXDn = crossunder(_ao, 0)
+    float _return = f_ratingBullBear(_aoXUp or (_ao > 0 and _ao[1] > 0 and f_rising(_ao)), _aoXDn or (_ao < 0 and _ao[1] < 0 and f_falling(_ao)))
+    _return := f_notNa(_ao) ? _return : na
+
+// ————— Momentum rating.
+f_ratingMom() =>
+    float _mom = close - close[10]
+    float _return = f_ratingBullBear(f_rising(_mom), f_falling(_mom))
+    _return := f_notNa(_mom) ? _return : na
+
+// ————— MACD rating.
+f_ratingMacd() =>
+    [_macd, _signal, _] = macd(close, 12, 26, 9)
+    float _return = f_ratingBullBear(_macd > _signal, _macd < _signal)
+    _return := not na(_macd) and not na(_signal) ? _return : na
+
+// ————— Stoch RSI rating.
+f_ratingStochRsi() =>
+    float _rsi = rsi(close, 14)
+    float _k = sma(stoch(_rsi, _rsi, _rsi, 14), 3)
+    float _d = sma(_k, 3)
+    float _return = f_ratingBullBear(f_trendDn() and _k < 20 and _d < 20 and _k > _d and _k[1] < _d[1], f_trendUp() and _k > 80 and _d > 80 and _k < _d and _k[1] > _d[1])
+    _return := f_notNa(_k) and f_notNa(_d) and not na(f_trendDn()) and not na(f_trendUp()) ? _return : na
+
+// ————— Williams %R rating.
+f_ratingWpr() =>
+    float _wpr = wpr(14)
+    float _return = f_ratingBullBear(_wpr < -80 and f_rising(_wpr), _wpr > -20 and f_falling(_wpr))
+    _return := f_notNa(_wpr) ? _return : na
+
+// ————— Bull Bear Power rating.
+f_ratingBbp() =>
+    float _powerBull = high - ema(close, 13)
+    float _powerBear = low  - ema(close, 13)
+    float _return = f_ratingBullBear(f_trendUp() and _powerBear < 0 and f_rising(_powerBear), f_trendDn() and _powerBull > 0 and f_falling(_powerBull))
+    _return := f_notNa(_powerBull) and f_notNa(_powerBear) and not na(f_trendDn()) and not na(f_trendUp()) ? _return : na
+
+// ————— Ultimate Oscillator rating.
+f_ratingUo() =>
+    var int _pFast =  7
+    var int _pMid  = 14
+    var int _pLong = 28
+    float _tl = close[1] < low ? close[1] : low
+    float _uo = na
+    float _v1 = sum(tr, _pFast)
+    float _v2 = sum(tr, _pMid)
+    float _v3 = sum(tr, _pLong)
+    float _v4 = sum(close - _tl, _pFast)
+    float _v5 = sum(close - _tl, _pMid)
+    float _v6 = sum(close - _tl, _pLong)
+    if _v1 != 0 and _v2 != 0 and _v3 != 0
+    	float _p0 = _pLong / _pFast
+    	float _p1 = _pLong / _pMid
+    	float _v7 = (_v4 / _v1) * _p0
+    	float _v8 = (_v5 / _v2) * _p1
+    	float _v9 = (_v6 / _v3)
+    	_uo := 100 * (_v7 + _v8 + _v9) / (_p0 + _p1 + 1)
+    float _return = f_ratingBullBear(_uo > 70, _uo < 30)
+    _return := not na(_uo) ? _return : na
+
+// ————— Function that calculates the ratings for the three groups: All, MAs, Oscillators.
+f_ratings(_offset) =>
+    // int _offset: offset of values returned. Required to control repainting. Can be 0 or 1.
+    // Dependencies: `f_ratingMa()`, `f_ratingIchimoku()`, and one function for each of the oscillators.
+    
+    // Array holding the calculated ratings for MAs group, then for Oscillators.
+    var float[] _ratings = array.new_float(0)
+
+    // Calculate MAs rating.
+    array.clear(_ratings)
+    array.push(_ratings, f_ratingMa(sma(close,  10), close))
+    array.push(_ratings, f_ratingMa(sma(close,  20), close))
+    array.push(_ratings, f_ratingMa(sma(close,  30), close))
+    array.push(_ratings, f_ratingMa(sma(close,  50), close))
+    array.push(_ratings, f_ratingMa(sma(close, 100), close))
+    array.push(_ratings, f_ratingMa(sma(close, 200), close))
+    array.push(_ratings, f_ratingMa(ema(close,  10), close))
+    array.push(_ratings, f_ratingMa(ema(close,  20), close))
+    array.push(_ratings, f_ratingMa(ema(close,  30), close))
+    array.push(_ratings, f_ratingMa(ema(close,  50), close))
+    array.push(_ratings, f_ratingMa(ema(close, 100), close))
+    array.push(_ratings, f_ratingMa(ema(close, 200), close))
+    array.push(_ratings, f_ratingMa(hma(close,   9), close))
+    array.push(_ratings, f_ratingMa(vwma(close, 20), close))
+    array.push(_ratings, f_ratingIchimoku())
+    float _ratingMas = array.avg(_ratings)
+    
+    // Calculate Oscillators rating.
+    array.clear(_ratings)
+    array.push(_ratings, f_ratingRsi())
+    array.push(_ratings, f_ratingStoch())
+    array.push(_ratings, f_ratingCci())
+    array.push(_ratings, f_ratingAdx())
+    array.push(_ratings, f_ratingAo())
+    array.push(_ratings, f_ratingMom())
+    array.push(_ratings, f_ratingMacd())
+    array.push(_ratings, f_ratingStochRsi())
+    array.push(_ratings, f_ratingWpr())
+    array.push(_ratings, f_ratingBbp())
+    array.push(_ratings, f_ratingUo())
+    float _ratingOsc = array.avg(_ratings)
+    
+    // Calculate weighed average of the two groups: MAs and Oscillators.
+    float _ratingTot = nz(_ratingMas * i_weightMAs) + nz(_ratingOsc * (1. - i_weightMAs))
+    [_ratingTot[_offset], _ratingMas[_offset], _ratingOsc[_offset]]
+
+// ————— Function returning the index to be used in arrays `ratings` and `texts` to get values and legends in the correct order when printing results.
+f_idx(_pos) =>
+    // int _pos: line number (0-2) for which we need the index into our `ratings` and `texts` arrays.
+    // Dependency: `indices` array containing the vertical order of appearance of the current ratings.
+    int _return = array.get(indices, _pos)
+
+// ————— Function that orders the `indices` array such that its elements represent the indices into arrays `ratings` and `texts`,
+//       which `f_idx()` will then use to fetch the proper values and legends for each of the three lines in the results.
+//       The order used is derived from the "Rating uses" user selection. User's choice always appears on line 1, with the remaining ones on lines 2 and 3.
+f_orderSignals(_userSelection) =>
+    // string _userSelection: user choice of which rating group to display.
+    // Dependencies: `indices` array, `RTx` constants.
+    if _userSelection == RT2
+        array.set(indices, 0, 1)
+        array.set(indices, 1, 2)
+        array.set(indices, 2, 0)
+    else if _userSelection == RT3
+        array.set(indices, 0, 2)
+        array.set(indices, 1, 1)
+        array.set(indices, 2, 0)
+    else
+        array.set(indices, 0, 0)
+        array.set(indices, 1, 1)
+        array.set(indices, 2, 2)
+
+// ————— Function counting the number of consecutive ups and downs for `_src`.
+f_countRising(_src) =>
+    // float _src: value of ratings to color.
+    var int _cnt = 0
+    float _chg = change(abs(_src))
+    if _src == 0
+        _cnt := 0
+    else if _chg > 0
+        _cnt := min(5, _cnt + 1)
+    else if _chg < 0
+        _cnt := max(1, _cnt - 1)
+    int _return = _src > 0 ? _cnt : -_cnt
+
+f_c_signal(_gradient) =>
+    // int _gradient: gradient level (+5 to -5) from which to derive a color.
+    color _color  = _gradient > 0 ? i_c_bull : _gradient < 0 ? i_c_bear : i_c_neutral
+    float _transp = 100 - (abs(_gradient) * 20)
+    _transp :=  _transp == 80 ? 75 : _transp
+    color _return = _color == i_c_neutral ? _color : color.new(_color, _transp)
+
+// ————— Function returning the color used to display a state string in the results.
+f_c_colorFromRating(_rating) =>
+    // float _rating: rating from which to derive a color.
+    color _return = if _rating > LEVEL_STRONG
+        color.new(i_c_bull, 20)
+    else if _rating > LEVEL_WEAK
+        color.new(i_c_bull, 50)
+    else if _rating < -LEVEL_STRONG
+        color.new(i_c_bear, 20)
+    else if _rating < -LEVEL_WEAK
+        color.new(i_c_bear, 50)
+    else
+        i_c_neutral
+
+// ————— Function returning a string corresponding to the state of a `_rating`.
+f_textFromRating(_rating) =>
+    // float _rating: rating from which to derive a string.
+    string _return = if _rating > LEVEL_STRONG
+        "Strong Sell"
+    else if _rating > LEVEL_WEAK
+        "Sell"
+    else if _rating < -LEVEL_STRONG
+        "Strong Buy"
+    else if _rating < -LEVEL_WEAK
+        "Buy"
+    else
+        "Neutral"
+
+// ————— Function that prints one line at a time in rating results to the right of the last bar.
+f_print(_txt, _txtColor) =>
+    // string _txt     : text of the line.
+    // color  _txtColor: color of the text.
+    var _lbl = label.new(bar_index, 0, "", xloc.bar_index, yloc.price, color(na), label.style_label_left, color.white, textalign = text.align_left)
+    // Update label.
+    if barstate.islast
+    	label.set_x(_lbl, bar_index)
+        label.set_text(_lbl, _txt)
+    	label.set_textcolor(_lbl, _txtColor)
+
+// ————— Converts current chart timeframe into a float minutes value.
+f_tfInMinutes() => 
+    float _return = timeframe.multiplier * (
+      timeframe.isseconds ? 1. / 60             :
+      timeframe.isminutes ? 1.                  :
+      timeframe.isdaily   ? 60. * 24            :
+      timeframe.isweekly  ? 60. * 24 * 7        :
+      timeframe.ismonthly ? 60. * 24 * 30.4375  : na)
+
+// ————— Returns resolution of _res string timeframe in minutes.
+f_tfInMinutesFrom(_tf) =>
+    // _tf: string timeframe (in `timeframe.period` string format) to convert in float minutes.
+    // Dependency: f_tfInMinutes()
+    float _return = security(syminfo.tickerid, _tf, f_tfInMinutes())
+// }
+
+
+
+// ———————————————————— Calculations {
+
+// ————— Set text of results legends and determine their order from user-selected group of ratings.
+if barstate.isfirst
+    f_orderSignals(i_calcs)
+
+// ————— Calculate ratings.
+// Determine if HTF is used.
+var bool htfUsed = i_tf != ""
+// If HTF is used, ensure chart TF < HTF.
+bool chartTfIsTooHigh = htfUsed and f_tfInMinutes() >= f_tfInMinutesFrom(i_tf)
+// Fetch ratings, adjusting series offset with HTF (which never repaints) and user-selected repaint settings (when no HTF is used). Two-stage offsetting is required because `f_ratings()` returns a tuple.
+int idx1 = htfUsed and barstate.isrealtime ? 1 : 0
+int idx2 = (i_repaint and not htfUsed) or (htfUsed and barstate.isrealtime) ? 0 : 1
+[ratingTot_, ratingMas_, ratingOsc_] = security(syminfo.tickerid, i_tf, f_ratings(idx1))
+float ratingTot = ratingTot_[idx2]
+float ratingMas = ratingMas_[idx2]
+float ratingOsc = ratingOsc_[idx2]
+
+// ————— Place ratings in known order.
+array.set(ratings, 0, ratingTot)
+array.set(ratings, 1, ratingMas)
+array.set(ratings, 2, ratingOsc)
+// User-selected ratings group to display as the signal and whose state always appears on the first line of results.
+float userRating = array.get(ratings, f_idx(0))
+// }
+
+
+
+// ———————————————————— Plots {
+
+// ————— Build signal color.
+bool  condBuy      = userRating >  LEVEL_WEAK
+bool  condSell     = userRating < -LEVEL_WEAK
+float valsBuy      = condBuy  ? userRating : 0
+float valsSell     = condSell ? userRating : 0
+int   risingBuys   = f_countRising(valsBuy)
+int   fallingSells = f_countRising(valsSell)
+int   gradientLvl  = condBuy ? risingBuys : condSell ? fallingSells : 0
+color c_signal     = f_c_signal(gradientLvl)
+
+// ————— Display rating on chart.
+var table display = table.new(i_tableYpos + "_" + i_tableXpos, 1, 2)
+if barstate.islast
+    // Populate our table cell.
+    table.cell(display, 0, 0, f_textFromRating(userRating), i_width, i_height, text_color = i_c_text, text_size = i_textSize, bgcolor = f_c_colorFromRating(userRating))
+    if chartTfIsTooHigh
+        // Show when the chart's TF is greater than the HTF configured in inputs.
+        table.cell(display, 0, 1, "Chart's timeframe must be smaller than " + i_tf, text_color = i_c_text, text_size = i_textSize, bgcolor = color.red)
+
+// ————— Data Window values.
+plotchar(ratingTot, "All",         "", location.top, f_c_colorFromRating(ratingTot))
+plotchar(ratingMas, "MAs",         "", location.top, f_c_colorFromRating(ratingMas))
+plotchar(ratingOsc, "Oscillators", "", location.top, f_c_colorFromRating(ratingOsc))
+plotchar(na,        "═══════",     "", location.top, f_c_colorFromRating(ratingTot))
+// }

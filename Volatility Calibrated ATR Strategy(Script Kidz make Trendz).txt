@@ -1,0 +1,274 @@
+// © -_-
+//@version=5
+strategy(shorttitle="Script Kidz make Trendz", title="Script Kidz make Trendz", overlay = true, commission_type=strategy.commission.percent,commission_value=0.02,default_qty_type =strategy.percent_of_equity,default_qty_value = 100,initial_capital =10000, pyramiding=0, process_orders_on_close=true)
+
+src = input.source(close, "Source")
+atr_factor = input.float(5.08, "ATR Factor", minval=0.25, step=0.01)
+
+// SPX 1 Day : atr_ factor = 5.08 , stedev_len = 1
+
+// For standard deviation
+stdev_len = input(1,'stdev len')
+
+d = stdev_len
+n = stdev_len
+
+// Volatility function
+vol_f() =>
+    x = math.exp(ta.stdev(math.log(close / close[1]), n) * d)
+    y = src * math.pow(x, 2)
+    z = src / math.pow(x, 2)
+    ta.stoch(close, y, z, n)
+
+// ATR
+atr_f(length) =>
+    sum = 0.0
+    tr = math.max(high - low, math.abs(high - close[1]), math.abs(low - close[1]))
+    sum := (tr + (length - 1) * nz(sum[1])) / length
+    sum
+
+// Calibrator function
+main_f(source, atr_factor) =>
+    var bool uptrend = true
+    var float max = src
+    var float min = src
+    var float stop = 0.0
+    vol = vol_f()
+    len = math.min(2000, math.abs(int(106 * (na(vol) ? 1 : vol / 100))))
+    atr = atr_f(len)
+    atrM = ta.wma(atr, len) * atr_factor - ta.stdev(atr, len)
+    max := math.max(max, src)
+    min := math.min(min, src)
+    stop := nz(uptrend ? math.max(stop, max - atrM) : math.min(stop, min + atrM), src)
+    uptrend := src - stop >= 0.0
+    if uptrend != nz(uptrend[1], true)
+        max  := src
+        min  := src
+        stop := uptrend ? max - atrM : min + atrM
+    [stop, uptrend]
+
+// Request Heikin Ashi data
+[stop, uptrend] = request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, main_f(src, atr_factor))
+// Request Candles data
+//[stop, uptrend] = request.security(syminfo.tickerid, timeframe.period, main_f(src, atr_factor))
+
+// Conditions
+down = uptrend != uptrend[1] and not uptrend
+up = uptrend != uptrend[1] and uptrend
+
+// Drawings
+plotshape(down, style=shape.square, color=color.red, size=size.tiny, title="Uptrend begins")
+plotshape(up, style=shape.square, color=color.green, size=size.tiny, location=location.belowbar, title="Downtrend begins")
+plot(stop, color=uptrend ? color.new(color.green, 50) : color.new(color.red, 50), linewidth=2, title="Volatility Calibrated ATR")
+
+/////// Alerts /////
+if (up)
+    strategy.entry("Long", strategy.long, comment = "Long")
+//   
+if (down)
+    strategy.close("Long", comment = "exit")
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                               ------------------------- Return Statistics --------------------------------------
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//DISPLAY SWITCH INPUTS
+disp_ind = input.string ("Equity", title = "Display", tooltip = "Choose which data you would like to display", options=["Strategy","Equity","Open Profit","Gross Profit","Net Profit"])
+disp_col = input.color(color.blue,title="Display Color")
+//PLOT DATA
+plot_equity  = plot(disp_ind == "Equity" ? strategy.equity/strategy.initial_capital  : na , color = disp_col  , title = "strategy Equity")
+plot_op  = plot(disp_ind == "Open Profit"  ? strategy.openprofit : na , color = disp_col , title = "Open Profit")
+plot_gp = plot(disp_ind == "Gross Profit" ? strategy.grossprofit  : na , color = disp_col , title = "Gross Profit")
+plot_np  = plot(disp_ind == "Net Profit"  ? strategy.netprofit   : na , color = disp_col , title = "Net Profit")
+
+////TRUNCATE FUNCTION
+truncate(number, decimals) =>
+    factor = math.pow(10, decimals)
+    int(number * factor) / factor
+
+////EQUITY
+showEquity(_dialogBox, _name1,_equity) =>
+    table.cell(_dialogBox,   0,  0,  _name1,   text_color = disp_col,        text_size = size.normal)
+    table.cell(_dialogBox,   1,  0,  _equity,   text_color = disp_col,        text_size = size.normal)
+
+var table equityBox     = table.new(position.top_center, 2,    1, bgcolor = color.new(color.black,100))
+
+if disp_ind == "Equity"
+    showEquity(equityBox, "Equity",str.tostring(truncate(strategy.equity/strategy.initial_capital ,2))+"x")
+    
+////OPEN PROFIT   
+showOpenProfit(_dialogBox, _name1,_op) =>
+    table.cell(_dialogBox,   0,  0,  _name1,   text_color = disp_col,        text_size = size.normal)
+    table.cell(_dialogBox,   1,  0,  _op,   text_color = disp_col,        text_size = size.normal)
+
+var table openprofitBox     = table.new(position.top_center, 2,    1, bgcolor = color.new(color.black,100))
+
+if disp_ind == "Open Profit"
+    showOpenProfit(openprofitBox, "Open Profit","$"+str.tostring(truncate(strategy.openprofit,2)))
+
+////GROSS PROFIT
+showGrossProfit(_dialogBox, _name1,_gp) =>
+    table.cell(_dialogBox,   0,  0,  _name1,   text_color = disp_col,        text_size = size.normal)
+    table.cell(_dialogBox,   1,  0,  _gp,   text_color = disp_col,        text_size = size.normal)
+
+var table grossprofitBox     = table.new(position.top_center, 2,    1, bgcolor = color.new(color.black,100))
+
+if disp_ind == "Gross Profit"
+    showGrossProfit(openprofitBox, "Gross Profit","$"+str.tostring(truncate(strategy.grossprofit,2)))
+
+////NET PROFIT
+showNetProfit(_dialogBox, _name1,_np) =>
+    table.cell(_dialogBox,   0,  0,  _name1,   text_color = disp_col,        text_size = size.normal)
+    table.cell(_dialogBox,   1,  0,  _np,   text_color = disp_col,        text_size = size.normal)
+
+var table netprofitBox     = table.new(position.top_center, 2,    1, bgcolor = color.new(color.black,100))
+
+if disp_ind == "Net Profit"
+    showNetProfit(openprofitBox, "Net Profit","$"+str.tostring(truncate(strategy.netprofit,2)))
+
+//PERFORMANCE TABLE
+max_dd = 0.
+max_eq = strategy.equity
+max_eq := math.max(nz(max_eq[1]), strategy.equity)
+max_dd := math.min(nz(max_dd[1]), strategy.equity/max_eq - 1)
+
+var max_dd_table = table.new(position = position.middle_left, columns=1, rows=2, bgcolor=color.yellow, border_width=1)
+table.cell(table_id = max_dd_table, column=0, row=0, text="Max DD")
+table.cell(table_id = max_dd_table, column=0, row=1, text=str.tostring(math.ceil(max_dd * 1000)/10) + "%")
+    
+////INTRADAY FACTORS
+maxTradeDrawDown() =>
+    tradeEntryEquity = 0.0
+    maxDrawdownPercent = 0.0
+    for tradeNo = 0 to strategy.closedtrades-1
+        maxDrawdownPercent := math.max(maxDrawdownPercent, (strategy.closedtrades.max_drawdown(tradeNo)/(math.abs(strategy.closedtrades.size(tradeNo))*strategy.closedtrades.entry_price(tradeNo))*100))
+    result = maxDrawdownPercent
+
+AVG_bar() =>
+    sumBarsPerTrade = 0
+    for tradeNo = 0 to strategy.closedtrades - 1
+        sumBarsPerTrade += strategy.closedtrades.exit_bar_index(tradeNo) - strategy.closedtrades.entry_bar_index(tradeNo) + 1
+    result = nz(sumBarsPerTrade / strategy.closedtrades)
+
+daily_return = strategy.equity/strategy.equity[1]-1
+var returns_array = array.new_float(0)
+var negative_returns_array = array.new_float(0)
+var positive_returns_array = array.new_float(0)
+
+year_input = input(2000)
+
+if year > year_input
+    array.push(returns_array, daily_return)
+    if daily_return <= 0.0
+        array.push(negative_returns_array, daily_return)
+        array.push(positive_returns_array, 0.0)
+    else
+        array.push(positive_returns_array, daily_return)
+        array.push(negative_returns_array, 0.0)
+
+////STAT CALCULATIONS
+intrade_drawdown = math.round(maxTradeDrawDown()*(-1),2)
+standard_deviation = array.stdev(returns_array)
+negative_returns_standard_deviation = array.stdev(negative_returns_array)
+mean = array.avg(returns_array)
+sharpe = math.round(mean/standard_deviation*math.sqrt(365),2)
+sortino = math.round(mean/negative_returns_standard_deviation*math.sqrt(365),2)
+postive_area = array.sum(positive_returns_array)
+negative_area = array.sum(negative_returns_array)*(-1)
+omega = math.round(postive_area/negative_area*math.sqrt(365),2)
+trades = strategy.closedtrades
+AVG_bar = math.round(AVG_bar())
+profitable_percent = math.round(strategy.wintrades/trades*100,2)
+profit_factor = math.round(strategy.grossprofit/strategy.grossloss,2)
+
+////SLAPPER PARAMETERS
+intrade_drawdown_slap_value = -25
+intrade_drawdown_low_value = -40
+sharpe_slap_value = 2
+sharpe_low_value = 1.5
+sortino_slap_value = 3
+sortino_low_value = 2
+trades_slap_value = 20
+trades_low_value = 15
+trades_high_value = 80
+profitable_slap_value = 50
+profitable_low_value = 35
+profit_factor_slap_value = 4
+profit_factor_low_value = 2
+omega_slap_value =20
+omega_low_value = 19.99
+AVG_Bar_slap_value_low = 20
+AVG_Bar_slap_value_high = 80
+AVG_Bar_high_value = 80
+AVG_Bar_low_value = 15
+
+var stats_table = table.new(position=position.middle_left, columns=2, rows=8, bgcolor=color.yellow, border_width=1)
+
+////DRAWDOWN CELL
+table.cell(stats_table, text_halign=text.align_left, column=0, row=0, text="Max DD")
+table.cell(stats_table, text_halign=text.align_right, column=1, row=0, text=str.tostring(intrade_drawdown)+"%")
+if intrade_drawdown > intrade_drawdown_slap_value
+    table.cell_set_bgcolor(stats_table, column=1, row=0, bgcolor=color.green)
+else if intrade_drawdown < intrade_drawdown_low_value
+    table.cell_set_bgcolor(stats_table, column=1, row=0, bgcolor=color.red)
+
+////SHARPE RATIO CELL
+table.cell(stats_table, text_halign=text.align_left, column=0, row=1, text="Sharpe")
+table.cell(stats_table, text_halign=text.align_right, column=1, row=1, text=str.tostring(sharpe))
+if sharpe > sharpe_slap_value
+    table.cell_set_bgcolor(stats_table, column=1, row=1, bgcolor=color.green)
+else if sharpe < sharpe_low_value
+    table.cell_set_bgcolor(stats_table, column=1, row=1, bgcolor=color.red)
+
+////SORTINO RATIO CELL
+table.cell(stats_table, text_halign=text.align_left, column=0, row=2, text="Sortino")
+table.cell(stats_table, text_halign=text.align_right, column=1, row=2, text=str.tostring(sortino))
+if sortino > sortino_slap_value
+    table.cell_set_bgcolor(stats_table, column=1, row=2, bgcolor=color.green)
+else if sortino < sortino_low_value
+    table.cell_set_bgcolor(stats_table, column=1, row=2, bgcolor=color.red)
+
+////OMEGA RATIO CELL
+table.cell(table_id = stats_table, text_halign=text.align_left, column=0, row=3, text="Omega")
+table.cell(table_id = stats_table, text_halign=text.align_right, column=1, row=3, text=str.tostring(omega))
+if omega > omega_slap_value
+    table.cell_set_bgcolor(stats_table, column=1, row=3, bgcolor=color.green)
+else if omega < omega_low_value
+    table.cell_set_bgcolor(stats_table, column=1, row=3, bgcolor=color.red)
+
+////PROFIT FACTOR CELL
+table.cell(stats_table, text_halign=text.align_left, column=0, row=4, text="Profit Factor")
+table.cell(stats_table, text_halign=text.align_right, column=1, row=4, text=str.tostring(profit_factor))
+if profit_factor > profit_factor_slap_value
+    table.cell_set_bgcolor(stats_table, column=1, row=4, bgcolor=color.green)
+else if profit_factor < profit_factor_low_value
+    table.cell_set_bgcolor(stats_table, column=1, row=4, bgcolor=color.red)
+    
+////% PROFITABLE CELL
+table.cell(stats_table, text_halign=text.align_left, column=0, row=5, text="Profitable %")
+table.cell(stats_table, text_halign=text.align_right, column=1, row=5, text=str.tostring(profitable_percent)+"%")
+if profitable_percent > profitable_slap_value
+    table.cell_set_bgcolor(stats_table, column=1, row=5, bgcolor=color.green)
+else if profitable_percent < profitable_low_value
+    table.cell_set_bgcolor(stats_table, column=1, row=5, bgcolor=color.red)
+
+////NUMBER OF TRADES CELL
+table.cell(stats_table, text_halign=text.align_left, column=0, row=6, text="Trades")
+table.cell(stats_table, text_halign=text.align_right, column=1, row=6, text=str.tostring(trades))
+if trades >= trades_slap_value and trades <= trades_high_value
+    table.cell_set_bgcolor(stats_table, column=1, row=6, bgcolor=color.green)
+else if trades < trades_low_value or trades > trades_high_value
+    table.cell_set_bgcolor(stats_table, column=1, row=6, bgcolor=color.red)
+
+////AVG BAR  TRADES CELL
+table.cell(stats_table, text_halign=text.align_left, column=0, row=7, text="AVG Bar")
+table.cell(stats_table, text_halign=text.align_right, column=1, row=7, text=str.tostring(AVG_bar))
+if AVG_bar < AVG_Bar_slap_value_high and AVG_bar > AVG_Bar_slap_value_low
+    table.cell_set_bgcolor(stats_table, column=1, row=7, bgcolor=color.green)
+else if AVG_bar < AVG_Bar_low_value or AVG_bar > AVG_Bar_high_value
+    table.cell_set_bgcolor(stats_table, column=1, row=7, bgcolor=color.red)
+
+////SLAPPER STATUS
+if intrade_drawdown > intrade_drawdown_slap_value and sharpe > sharpe_slap_value and sortino > sortino_slap_value and trades > trades_slap_value and profitable_percent > profitable_slap_value
+    table.set_bgcolor(stats_table, color.green)
+else
+    table.set_bgcolor(stats_table, color.yellow)

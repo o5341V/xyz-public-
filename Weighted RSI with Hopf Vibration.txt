@@ -1,0 +1,27 @@
+//@version=5
+indicator(title='Weighted RSI with Hopf Vibration', shorttitle='Weighted RSI', overlay=false)
+
+// Parameters for Hopf Vibration
+freq_real = input.float(defval=1, title='Real Frequency', minval=0.1, maxval=10)
+radius_real = input.float(defval=1, title='Real Radius', minval=0.1, maxval=5)
+weight_real = input.float(defval=0.5, title='Real Weight', minval=0, maxval=1)
+
+freq_imag = input.float(defval=1.5, title='Imaginary Frequency', minval=0.1, maxval=10)
+radius_imag = input.float(defval=0.8, title='Imaginary Radius', minval=0.1, maxval=5)
+weight_imag = input.float(defval=0.3, title='Imaginary Weight', minval=0, maxval=1)
+
+// Calculate the weighted Hopf Vibration using quaternions
+angle = 2 * math.pi * freq_real * time
+realPart = radius_real * math.cos(angle)
+imagPart = radius_imag * math.sin(angle + close / 100)  // Adjust phase based on the security ticker price
+
+// Calculate the combined weight for RSI using the Hopf Vibration
+rsi_weight = realPart * weight_real + imagPart * weight_imag
+
+// RSI Calculation
+rsi_length = input(defval=14, title='RSI Length')
+rsi = ta.rsi(close, rsi_length) * rsi_weight
+
+// Plot RSI and Bollinger Bands
+plot(rsi, color=color.new(color.purple, 0), title='Weighted RSI')
+

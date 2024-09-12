@@ -1,0 +1,29 @@
+//@version=5
+indicator("Vix Script w/ 52 Hi/Low", timeframe="")
+
+[_open, _close, _high, _low] = request.security("1/VIX", "", [open, close, high, low], lookahead=barmerge.lookahead_on)
+[_o2, _c2, _h2, _l2] = request.security("1/VIX", "", [open, close, high, low], lookahead=barmerge.lookahead_on)
+
+high_low_close = input.string(defval="Highs/Lows", title="Base 52 week values on candle:", options=["Highs/Lows", "Close"] )
+ 
+Highs_Len = input(5)
+Lows_Len = input(5)
+
+weekly_hh = request.security("1/VIX","", ta.highest(high,Highs_Len), lookahead=barmerge.lookahead_on)
+weekly_ll = request.security("1/VIX","", ta.lowest(low,Lows_Len), lookahead=barmerge.lookahead_on)
+weekly_hc = request.security("1/VIX","", ta.highest(close,Highs_Len), lookahead=barmerge.lookahead_on)
+weekly_lc = request.security("1/VIX","", ta.lowest(close,Lows_Len), lookahead=barmerge.lookahead_on)
+ 
+high_plot = high_low_close == "Highs/Lows" ? weekly_hh : weekly_hc
+low_plot = high_low_close == "Highs/Lows" ? weekly_ll : weekly_lc
+
+high_color = close != ta.highest(high,Highs_Len) ? color.rgb(255, 153, 0, 0) : color.rgb(255, 153, 0, 100)
+ 
+plot(high_plot, title='52 Week High', color=color.rgb(255, 153, 0, 50))
+plot(low_plot, title='52 Week Low', color=color.rgb(255, 153, 0, 50))
+
+plotcandle(_open, _high, _low, _close, title='Title', color = _close > _open ? #22ab94: color.red, wickcolor=_close > _open ? #22ab94 : color.red, bordercolor = _close > _open ? #22ab94 : color.red)
+
+//plotcandle(_low,_high,_open,_close)
+
+

@@ -1,0 +1,74 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Uni_ve12se
+
+//@version=4
+study("Ralph Haller Oscillator", overlay=false)
+
+resolution = input("1D", "Timeframe Resolution")
+
+// Heikin Ashi
+
+// Custom Resolution HA
+highHTF = security(heikinashi(syminfo.tickerid), resolution, high)
+lowHTF = security(heikinashi(syminfo.tickerid), resolution, low)
+ohlc4HTF = security(heikinashi(syminfo.tickerid), resolution, ohlc4)
+
+// Current Resolution HA
+highH = security(heikinashi(syminfo.tickerid), timeframe.period, high)
+lowH = security(heikinashi(syminfo.tickerid), timeframe.period, low)
+ohlc4H = security(heikinashi(syminfo.tickerid), timeframe.period, ohlc4)
+
+// Japanese
+
+// Custom Resolution Japanese
+highTF = security(syminfo.tickerid, resolution, high)
+lowTF = security(syminfo.tickerid, resolution, low)
+ohlc4TF = security(syminfo.tickerid, resolution, ohlc4)
+
+// Switchers
+data = input(title="Data Type", options = ["Heikin Ashi", "Heikin Ashi Custom Resolution", "Japanese", "Japanese Custom Resolution"], defval="Japanese")
+smoothing = input(title="Smoothing", options = ["Nearest Neighbour", "Disabled"], defval="Nearest Neighbour")
+
+ohlc4_function = data=="Heikin Ashi Custom Resolution" ? ohlc4HTF : data=="Heikin Ashi" ? ohlc4H : data=="Japanese" ? ohlc4 : data=="Japanese Custom Resolution" ? ohlc4TF : na
+high_function = data=="Heikin Ashi Custom Resolution" ? highHTF : data=="Heikin Ashi" ? highH : data=="Japanese" ? high : data=="Japanese Custom Resolution" ? highTF : na
+low_function = data=="Heikin Ashi Custom Resolution" ? lowHTF : data=="Heikin Ashi" ? lowH : data=="Japanese" ? low : data=="Japanese Custom Resolution" ? lowTF : na
+
+length = input(6, title="Length")
+scope = input(3, title="Scope")
+src = low_function[0]<low_function[1] ? (((ohlc4_function - ohlc4_function[1]))/(high_function+low_function - high_function[1]+low_function[1])) : (((high_function - low_function[1]))/(high_function+low_function - high_function[1]+low_function[1]))
+
+
+//
+
+fisher_func(src, scope)=>
+    Length = scope
+    xHL2 = src
+    k = 1
+    xMaxH = highest(xHL2, scope)
+    xMinL = lowest(xHL2,scope)
+    nValue = 0.0
+    nValue := 0.33 * 2 * ((xHL2 - xMinL) / (xMaxH - xMinL) - 0.5) + 0.67 * nz(nValue[1])
+    fisher = 0.0
+    fisher := smoothing=="Nearest Neighbour" ? (1 / k) * atan((1 + nValue) / (1 - nValue)) + 0.5 * nz(fisher[1]) : (1 / k) * atan((1 + nValue) / (1 - nValue))
+
+fish = fisher_func(src, scope)
+
+y = fish
+x1 = bar_index
+x2 = pow(x1,2)
+//
+S11 = sum(x2,length) - pow(sum(x1,length),2)/length
+S12 = sum(x1*x2,length) - (sum(x1,length) * sum(x2,length))/length
+S22 = sum(pow(x2,2),length) - pow(sum(x2,length),2)/length
+Sy1 = sum(y*x1,length) - (sum(y,length)*sum(x1,length))/length
+Sy2 = sum(y*x2,length) - (sum(y,length)*sum(x2,length))/length
+//
+max1 = sma(x1,length)
+max2 = sma(x2,length)
+may = sma(y,length)
+b2 = ((Sy1 * S22) - (Sy2*S12))/(S22*S11 - pow(S12,2))
+b3 = ((Sy2 * S11) - (Sy1 * S12))/(S22 * S11 - pow(S12,2))
+b1 = may - b2*max1 - b3*max2
+Ralph = b1 + b2*x1 + b3*x2
+//
+plot(Ralph, color=#81c784, transp=0, title="Ralph Haller Oscillator")

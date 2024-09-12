@@ -1,0 +1,42 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+//@version=4
+study("Volatility Direction Study")
+
+avgSwitcher = input(false, "Show Average")
+showFisher = input(false, "Show Fisher")
+
+var pos = 0.0
+var neg = 0.0
+
+pos := high[0]>high[1] ? (high/low-1)*100 : pos[1]
+neg := low[0]<low[1] ? (high/low-1)*100 : neg[1]
+
+length = input(30)
+posAvg = ema(pos, length)
+negAvg = ema(neg, length)
+
+ratio = posAvg-negAvg
+
+lime = high > low ? color.lime : color.lime 
+red = high > low ? #ef5350 : #ef5350
+color_lime = high[0]>high[1] ? color.new(lime, 0) : color.new(lime, 100)
+color_red = low[0]<low[1] ? color.new(red, 0) : color.new(red, 100)
+
+plot(showFisher==true ? na : avgSwitcher==false ? pos : na, title="Positive Volatility", color=color_lime, style=plot.style_histogram)
+plot(showFisher==true ? na : avgSwitcher==false ? neg : na, title="Negative Volatility", color=color_red, style=plot.style_histogram)
+plot(showFisher==true ? na : avgSwitcher==true ? posAvg : na, title="Positive Volatility Average", color=color_lime)
+plot(showFisher==true ? na : avgSwitcher==true ? negAvg : na, title="Negative Volatility Average", color=color_red)
+
+switcher_Source = input(title="Source", options=["Positive", "Negative", "Positive Average", "Negative Average", "Ratio"], defval="Positive")
+
+src = switcher_Source=="Positive" ? pos : switcher_Source=="Negative" ? neg : switcher_Source=="Positive Average" ? posAvg : switcher_Source=="Negative Average" ? negAvg : ratio
+
+len = input(9, minval=1, title="Length Fisher")
+high_ = highest(src, len)
+low_ = lowest(src, len)
+value = 0.0
+value := .66 * ((src - low_) / (high_ - low_) - .5) + .67 * nz(value[1])
+fisher = 0.0
+fisher := .5 * log((1 + value) / (1 - value)) + .5 * nz(fisher[1])
+
+plot(showFisher==false ? na : fisher, color=#2eff00, title="Fisher")

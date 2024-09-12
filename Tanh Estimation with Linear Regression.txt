@@ -1,0 +1,23 @@
+//@version=4
+study("Tanh Estimation with Linear Regression", precision=8)
+
+src = input(hl2)
+offset = input(1)
+
+tanh (x) =>
+    e=2.71828
+    tanh=(pow(e,2*x) -1) / (pow(e,2*x) +1)
+//
+
+// Calculate the Tanh Estimation
+periodtahn = input(200)
+tanhEstimation = (0.5 * tanh(0.01*(src-sma(src,periodtahn))/(stdev(src,periodtahn))))
+
+// Add linear regression line to the Tanh Estimation
+periodlin = input(21)
+reg = linreg(tanhEstimation, periodlin, offset)
+
+// Plot the Tanh Estimation
+hline(0)
+plot(tanhEstimation, color=color.yellow)
+plot(reg, color=color.red)

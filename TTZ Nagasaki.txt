@@ -1,0 +1,68 @@
+//@version=4
+study("Nagasaki", shorttitle ='Nagasaki', overlay=true, resolution='')
+
+main = hl2
+//
+volumeSum2 = sum(volume, 47)
+volumeSum3 = sum(volume, 93)
+
+evwma2 = 0.0
+evwma3 = 0.0
+
+evwma2 := ((volumeSum2 - volume) * nz(evwma2[1]) + volume * main) / volumeSum2
+evwma3 := ((volumeSum3 - volume) * nz(evwma3[1]) + volume * main) / volumeSum3
+
+dynamic_color1 = evwma2 > evwma3 ? color.new(#ffffff,20) : color.new(#d74929,20)
+dynamic_color2 = evwma2 > evwma3 ? color.new(#ffffff,90) : color.new(#d74929,90)
+
+dynamic_color3 = evwma2 > evwma3 ? color.new(#ffffff,30) : color.new(#d74929,30)
+dynamic_color4 = evwma2 > evwma3 ? color.new(#ffffff,30) : color.new(#d74929,30)
+
+a1 = plot(evwma2, title='top line', color=dynamic_color1, offset=0)
+a2 = plot(evwma3, title='bottom line', color=dynamic_color1, offset=0)
+
+fill(a1, a2, color=dynamic_color2, transp=75)
+
+npredictOneOne = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2]))/2)
+npredictOneTwo = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2])))
+npredictOneThree = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2]))/0.66)
+npredictOneFour = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2]))/0.5)
+npredictOneFive = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2]))/0.4)
+npredictOneSix = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2]))/0.33)
+npredictOneSeven = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2]))/0.25)
+npredictOneEight = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2]))/0.2)
+npredictOneNine = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2]))/0.1666)
+npredictOneTen = evwma2+(((evwma2-evwma2[1])+(evwma2[1]-evwma2[2]))/0.146666)
+
+plot(npredictOneOne, show_last=1, offset=1, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+plot(npredictOneTwo, show_last=1, offset=2, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+plot(npredictOneThree, show_last=1, offset=3, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+plot(npredictOneFour, show_last=1, offset=4, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+plot(npredictOneFive, show_last=1, offset=5, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+// plot(npredictOneSix, show_last=1, offset=6, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+// plot(npredictOneSeven, show_last=1, offset=7, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+// plot(npredictOneEight, show_last=1, offset=8, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+// plot(npredictOneNine, show_last=1, offset=9, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+// plot(npredictOneTen, show_last=1, offset=10, style=plot.style_circles, color=dynamic_color3, transp=0, editable=false)
+
+npredictTwoOne = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2]))/2)
+npredictTwoTwo = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2])))
+npredictTwoThree = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2]))/0.66)
+npredictTwoFour = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2]))/0.5)
+npredictTwoFive = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2]))/0.4)
+npredictTwoSix = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2]))/0.33)
+npredictTwoSeven = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2]))/0.25)
+npredictTwoEight = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2]))/0.2)
+npredictTwoNine = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2]))/0.1666)
+npredictTwoTen = evwma3+(((evwma3-evwma3[1])+(evwma3[1]-evwma3[2]))/0.146666)
+
+plot(npredictTwoOne, show_last=1, offset=1, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)
+plot(npredictTwoTwo, show_last=1, offset=2, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)
+plot(npredictTwoThree, show_last=1, offset=3, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)
+plot(npredictTwoFour, show_last=1, offset=4, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)
+plot(npredictTwoFive, show_last=1, offset=5, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)
+// plot(npredictTwoSix, show_last=1, offset=6, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)
+// plot(npredictTwoSeven, show_last=1, offset=7, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)
+// plot(npredictTwoEight, show_last=1, offset=8, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)
+// plot(npredictTwoNine, show_last=1, offset=9, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)
+// plot(npredictTwoTen, show_last=1, offset=10, style=plot.style_circles, color=dynamic_color4, transp=0, editable=false)

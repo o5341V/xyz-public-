@@ -1,0 +1,93 @@
+//@version=5
+indicator('Tom Demark Sequential on 40 Securities', shorttitle = "40oz")
+
+src = input(close, 'Source')
+
+tdi() =>
+    MAX_TDI = 9
+    TDI_DIST = 4
+    t = 0
+    t := nz(t[1])
+    if src >= src[TDI_DIST]
+        if t >= 0
+            t += 1
+            t
+        if t < 0
+            t := 1  // "price flip"
+            t
+    else
+        if t < 0
+            t -= 1
+            t
+        if t > 0
+            t := -1  // "price flip"
+            t
+    if t > MAX_TDI  // going over maximum
+        t := 1
+        t
+    if t < -MAX_TDI
+        t := -1
+        t
+    t
+
+m1 = nz(request.security('NASDAQ:AAPL', timeframe.period, tdi()))
+m2 = nz(request.security('NASDAQ:MSFT', timeframe.period, tdi()))
+m3 = nz(request.security('NASDAQ:AMZN', timeframe.period, tdi()))
+m4 = nz(request.security('NASDAQ:GOOG', timeframe.period, tdi()))
+m5 = nz(request.security('NASDAQ:TSLA', timeframe.period, tdi()))
+m6 = nz(request.security('NYSE:BRK.B', timeframe.period, tdi()))
+m7 = nz(request.security('NYSE:UNH', timeframe.period, tdi()))
+m8 = nz(request.security('NYSE:JNJ', timeframe.period, tdi()))
+m9 = nz(request.security('NYSE:XOM', timeframe.period, tdi()))
+m10 = nz(request.security('NYSE:JPM', timeframe.period, tdi()))
+m11 = nz(request.security('NYSE:PG', timeframe.period, tdi()))
+m12 = nz(request.security('NYSE:V', timeframe.period, tdi()))
+m13 = nz(request.security('NASDAQ:META', timeframe.period, tdi()))
+m14 = nz(request.security('NASDAQ:NVDA', timeframe.period, tdi()))
+m15 = nz(request.security('bitfinex:MKRUSD', timeframe.period, tdi()))
+m16 = nz(request.security('bitfinex:ETCUSD', timeframe.period, tdi()))
+m17 = nz(request.security('NYSE:CVX', timeframe.period, tdi()))
+m18 = nz(request.security('NYSE:HD', timeframe.period, tdi()))
+m19 = nz(request.security('NYSE:LLY', timeframe.period, tdi()))
+m20 = nz(request.security('NYSE:MA', timeframe.period, tdi()))
+m21 = nz(request.security('NYSE:ABBV', timeframe.period, tdi()))
+m22 = nz(request.security('NYSE:PFE', timeframe.period, tdi()))
+m23 = nz(request.security('NYSE:BAC', timeframe.period, tdi()))
+m24 = nz(request.security('NASDAQ:PEP', timeframe.period, tdi()))
+m25 = nz(request.security('NYSE:MRK', timeframe.period, tdi()))
+m26 = nz(request.security('NYSE:KO', timeframe.period, tdi()))
+m27 = nz(request.security('NASDAQ:COST', timeframe.period, tdi()))
+m28 = nz(request.security('NYSE:TMO', timeframe.period, tdi()))  //
+m29 = nz(request.security('NYSE:WMT', timeframe.period, tdi()))  //
+m30 = nz(request.security('NYSE:ABT', timeframe.period, tdi()))
+m31 = nz(request.security('NYSE:MCD', timeframe.period, tdi()))  // 
+m32 = nz(request.security('NYSE:DIS', timeframe.period, tdi()))  // 
+m33 = nz(request.security('NASDAQ:AVGO', timeframe.period, tdi()))  // 
+m34 = nz(request.security('NYSE:DHR', timeframe.period, tdi()))  // 
+m35 = nz(request.security('NASDAQ:CSCO', timeframe.period, tdi()))  // 
+m36 = nz(request.security('NYSE:WFC', timeframe.period, tdi()))  // 
+m37 = nz(request.security('NYSE:RTX', timeframe.period, tdi()))  // 
+m38 = nz(request.security('NYSE:VZ', timeframe.period, tdi()))  // 
+m39 = nz(request.security('NYSE:NEE', timeframe.period, tdi()))  // 
+m40 = nz(request.security('NYSE:PM', timeframe.period, tdi()))  //
+
+u(x) =>  // return 1 if green 9
+    x == 9 ? 1 : 0
+d(x) =>  // return -1 if red 9
+    x == -9 ? -1 : 0
+
+up = u(m1) + u(m2) + u(m3) + u(m4) + u(m5) + u(m6) + u(m7) + u(m8) + u(m9) + u(m10) + u(m11) + u(m12) + u(m13) + u(m14) + u(m15) + u(m16) + u(m17) + u(m18) + u(m19) + u(m20) + u(m21) + u(m22) + u(m23) + u(m24) + u(m25) + u(m26) + u(m27) + u(m28) + u(m29) + u(m30) + u(m31) + u(m32) + u(m33) + u(m34) + u(m35) + u(m36) + u(m37) + u(m38) + u(m39) + u(m40)
+dn = d(m1) + d(m2) + d(m3) + d(m4) + d(m5) + d(m6) + d(m7) + d(m8) + d(m9) + d(m10) + d(m11) + d(m12) + d(m13) + d(m14) + d(m15) + d(m16) + d(m17) + d(m18) + d(m19) + d(m20) + d(m21) + d(m22) + d(m23) + d(m24) + d(m25) + d(m26) + d(m27) + d(m28) + d(m29) + d(m30) + d(m31) + d(m32) + d(m33) + d(m34) + d(m35) + d(m36) + d(m37) + d(m38) + d(m39) + d(m40)
+
+
+hline(0)
+
+plot(up, 'count of green 9s', color.new(#3bff34, 0), trackprice=true, style=plot.style_columns)
+plot(dn, 'count of red 9s', color.new(#ff0000, 0), trackprice=true, style=plot.style_columns)
+
+Highest_avg_UP = ta.highest(up, input(252))
+Lowest_avg_DOWN = ta.lowest(dn, input(252))
+
+plot(Highest_avg_UP, color = color.white)
+plot(Lowest_avg_DOWN, color = color.white)
+

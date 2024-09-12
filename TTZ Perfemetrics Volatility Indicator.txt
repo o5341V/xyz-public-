@@ -1,0 +1,151 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+//Creator:Jay
+//Edits:Uni_ve12se
+
+//@version=4
+study("Perfemetrics Volatility Indicator", shorttitle="Perfemetrics VI")
+
+// Switchers
+switcher_Type = input(title="Volatility Type", options = ["Absolute", "Directional"], defval="Directional", group="Volatility")
+switcher_Formula = input(title="Volatility Formula", options = ["Total", "Signal", "Cross-Bar Signal"], defval="Total", group="Volatility")
+toggle_BB = input(true, "Enable BB", group="Bollinger Bands")
+switcher_srcBB = input(title="BB Source", options = ["Fisher", "Volatility"], defval="Fisher", group="Bollinger Bands")
+// Switchers
+
+//// Volatility Section Open
+
+lookback = input(52, "Cumulative Period", group="Volatility")
+lookback2 = input(155, "Cumulative Period2", group="Volatility")
+lookback3 = input(252, "Cumulative Period3", group="Volatility")
+
+// Volatility Formulas
+volatilityTotal_Absolute = abs(low[0]/high[1]-1)*100
+volatilityTotal_Directional = low[0]<low[1] ? (low[0]/high[1]-1)*100 : (high[0]/low[1]-1)*100
+
+volatilitySignal_Absolute = abs(close[0]/open[0]-1)*100
+volatilitySignal_Directional = (close[0]/open[0]-1)*100
+
+volatilitySignalComparative_Absolute = abs(close[0]/open[1]-1)*100
+volatilitySignalComparative_Directional = (close[0]/open[1]-1)*100
+
+// Reserved For Type Selection
+typeAbsolute = switcher_Formula=="Total" ? volatilityTotal_Absolute : switcher_Formula=="Signal" ? volatilitySignal_Absolute : switcher_Formula=="Cross-Bar Signal" ? volatilitySignalComparative_Absolute : na
+typeRelative = switcher_Formula=="Total" ? volatilityTotal_Directional : switcher_Formula=="Signal" ? volatilitySignal_Directional : switcher_Formula=="Cross-Bar Signal" ? volatilitySignalComparative_Directional : na
+
+// Volatility Declaration
+volatility = switcher_Type=="Directional" ? typeRelative : typeAbsolute
+volatilityDummy = volatility
+volatility := volatility+nz(volatility[1])-nz(volatilityDummy[lookback+1])
+
+volatility2 = switcher_Type=="Directional" ? typeRelative : typeAbsolute
+volatilityDummy2 = volatility2
+volatility2 := volatility2+nz(volatility2[1])-nz(volatilityDummy2[lookback2+1])
+
+volatility3 = switcher_Type=="Directional" ? typeRelative : typeAbsolute
+volatilityDummy3 = volatility3
+volatility3 := volatility3+nz(volatility3[1])-nz(volatilityDummy3[lookback3+1])
+//// Volatility Section Close
+
+//// Fisher's Transformation Section Open
+
+len = input(6, minval=1, title="Fisher Period", group="Fisher's Transformation")
+high_ = highest(volatility, len)
+low_ = lowest(volatility, len)
+value = 0.0
+value := .66 * ((volatility - low_) / (high_ - low_) - .5) + .67 * nz(value[1])
+fisher = .5 * log((1 + value) / (1 - value))
+
+len2 = input(52, minval=1, title="Fisher Period", group="Fisher's Transformation2")
+high_2 = highest(volatility, len2)
+low_2 = lowest(volatility, len2)
+value2 = 0.0
+value2 := .66 * ((volatility - low_2) / (high_2 - low_2) - .5) + .67 * nz(value2[1])
+fisher2 = .5 * log((1 + value2) / (1 - value2))
+
+len3 = input(252, minval=1, title="Fisher Period", group="Fisher's Transformation2")
+high_3 = highest(volatility, len3)
+low_3 = lowest(volatility, len3)
+value3 = 0.0
+value3 := .66 * ((volatility - low_3) / (high_3 - low_3) - .5) + .67 * nz(value3[1])
+fisher3 = .5 * log((1 + value3) / (1 - value3))
+
+//// Fisher's Transformation Section Close
+
+//// Bollinger Bands Section Open
+
+lengthBB = input(52, minval=1, title="Length BB", group="Bollinger Bands")
+srcBB = switcher_srcBB=="Fisher" ? fisher : volatility3
+mult = input(2.0, minval=0.001, maxval=50, title="StdDev", group="Bollinger Bands")
+basis = sma(srcBB, lengthBB)
+dev = mult * stdev(srcBB, lengthBB)
+upper = basis + dev
+lower = basis - dev
+
+lengthBB1 = input(252, minval=1, title="Length BB", group="Bollinger Bands")
+//srcBB2 = switcher_srcBB=="Fisher" ? fisher : volatility3
+//mult = input(2.0, minval=0.001, maxval=50, title="StdDev", group="Bollinger Bands")
+basis2 = sma(srcBB, lengthBB1)
+dev2 = mult * stdev(srcBB, lengthBB1)
+upper2 = basis2+ dev2
+lower2 = basis2- dev2
+
+lengthBB3 = input(20, minval=1, title="Length BB", group="Bollinger Bands")
+//mult = input(2.0, minval=0.001, maxval=50, title="StdDev", group="Bollinger Bands")
+basis3 = sma(srcBB, lengthBB)
+dev3 = mult * stdev(srcBB, lengthBB3)
+upper3 = basis3 + dev3
+lower3 = basis3 - dev3
+
+bbUpper = sma(srcBB,lengthBB) + mult*stdev(srcBB,lengthBB)
+bbLower = sma(srcBB,lengthBB) - mult*stdev(srcBB,lengthBB)
+
+// Remove offset if not proved useful
+offset = input(0, "Offset", type = input.integer, minval = -500, maxval = 500, group="Bollinger Bands")
+
+//// Bollinger Bands Section Close
+
+//////// Plots
+
+
+
+//// Plot Bollinger Bands
+//plot(toggle_BB==true ? basis : na, "Basis", color=#787b86, offset = offset)
+p1 = plot(toggle_BB==true ? upper : na, "Upper", color=color.teal, offset = offset)
+p2 = plot(toggle_BB==true ? lower : na, "Lower", color=color.teal, offset = offset)
+fill(p1, p2, title = "Background", color=#198787, transp=85)
+
+//plot(toggle_BB==true ? basis2 : na, "Basis2", color=#787b86, offset = offset)
+p11 = plot(toggle_BB==true ? upper2 : na, "Upper2", color=color.teal,style=plot.style_circles, offset = offset)
+p22 = plot(toggle_BB==true ? lower2 : na, "Lower2", color=color.teal,style=plot.style_circles, offset = offset)
+fill(p11, p22, title = "Background", color=#198787, transp=85)
+
+//plot(toggle_BB==true ? basis2 : na, "Basis2", color=#787b86, offset = offset)
+//p111 = plot(toggle_BB==true ? upper3 : na, "Upper3", color=color.teal,style=plot.style_circles, offset = offset)
+//p222 = plot(toggle_BB==true ? lower3 : na, "Lower3", color=color.teal,style=plot.style_circles, offset = offset)
+//fill(p111, p222, title = "Background", color=#198787, transp=85)
+
+topz =  fisher2 > upper2 
+bottomz = fisher2 < lower2
+topzcolor = topz ? color.red : na
+bottomzcolor = bottomz ? color.red : na
+
+plotshape(upper2, color=topzcolor,location=location.absolute)
+plotshape(lower2, color=bottomzcolor,location=location.absolute)
+
+//--- BB Squeeze
+
+squeeze = (upper3 <= upper and lower3 >= lower) ? (upper <= upper2 and lower >= lower2) : na//SMA
+//squeeze = bbUpper <= upper2 and bbLower >=lower2//EMA
+
+squeezecolor = squeeze ? color.red : color.gray
+
+//plots
+plot(basis, linewidth = 2, color=squeezecolor, title="Squeeze indicator")
+
+//// Plot Volatility
+plot(switcher_srcBB=="Volatility" ? volatility : na, color=#ffffff, title="Volatility")
+//plot(switcher_srcBB=="Volatility" ? volatility2 : na, color=#ffffff, title="Volatility")
+
+//// Plot Fisher
+//plot(switcher_srcBB=="Fisher" ? fisher : na, color=#ffffff,linewidth = 2, title="Fisher's z")
+plot(switcher_srcBB=="Fisher" ? fisher2 : na, color=#ffffff,linewidth = 2, title="Fisher's z2")
