@@ -1,0 +1,291 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © HeWhoMustNotBeNamed
+
+//   __    __            __       __  __                  __       __                        __      __    __              __      _______             __    __                                          __ 
+//  /  |  /  |          /  |  _  /  |/  |                /  \     /  |                      /  |    /  \  /  |            /  |    /       \           /  \  /  |                                        /  |
+//  $$ |  $$ |  ______  $$ | / \ $$ |$$ |____    ______  $$  \   /$$ | __    __   _______  _$$ |_   $$  \ $$ |  ______   _$$ |_   $$$$$$$  |  ______  $$  \ $$ |  ______   _____  ____    ______    ____$$ |
+//  $$ |__$$ | /      \ $$ |/$  \$$ |$$      \  /      \ $$$  \ /$$$ |/  |  /  | /       |/ $$   |  $$$  \$$ | /      \ / $$   |  $$ |__$$ | /      \ $$$  \$$ | /      \ /     \/    \  /      \  /    $$ |
+//  $$    $$ |/$$$$$$  |$$ /$$$  $$ |$$$$$$$  |/$$$$$$  |$$$$  /$$$$ |$$ |  $$ |/$$$$$$$/ $$$$$$/   $$$$  $$ |/$$$$$$  |$$$$$$/   $$    $$< /$$$$$$  |$$$$  $$ | $$$$$$  |$$$$$$ $$$$  |/$$$$$$  |/$$$$$$$ |
+//  $$$$$$$$ |$$    $$ |$$ $$/$$ $$ |$$ |  $$ |$$ |  $$ |$$ $$ $$/$$ |$$ |  $$ |$$      \   $$ | __ $$ $$ $$ |$$ |  $$ |  $$ | __ $$$$$$$  |$$    $$ |$$ $$ $$ | /    $$ |$$ | $$ | $$ |$$    $$ |$$ |  $$ |
+//  $$ |  $$ |$$$$$$$$/ $$$$/  $$$$ |$$ |  $$ |$$ \__$$ |$$ |$$$/ $$ |$$ \__$$ | $$$$$$  |  $$ |/  |$$ |$$$$ |$$ \__$$ |  $$ |/  |$$ |__$$ |$$$$$$$$/ $$ |$$$$ |/$$$$$$$ |$$ | $$ | $$ |$$$$$$$$/ $$ \__$$ |
+//  $$ |  $$ |$$       |$$$/    $$$ |$$ |  $$ |$$    $$/ $$ | $/  $$ |$$    $$/ /     $$/   $$  $$/ $$ | $$$ |$$    $$/   $$  $$/ $$    $$/ $$       |$$ | $$$ |$$    $$ |$$ | $$ | $$ |$$       |$$    $$ |
+//  $$/   $$/  $$$$$$$/ $$/      $$/ $$/   $$/  $$$$$$/  $$/      $$/  $$$$$$/  $$$$$$$/     $$$$/  $$/   $$/  $$$$$$/     $$$$/  $$$$$$$/   $$$$$$$/ $$/   $$/  $$$$$$$/ $$/  $$/  $$/  $$$$$$$/  $$$$$$$/ 
+//                                                                                                                                                                                                          
+//                                                                                                                                                                                                          
+//
+//@version=5
+
+indicator("Divergence Backtester", overlay=true, max_lines_count = 500, max_labels_count = 500)
+import HeWhoMustNotBeNamed/mZigzag/10 as zg
+import HeWhoMustNotBeNamed/enhanced_ta/14 as eta
+import HeWhoMustNotBeNamed/arrays/1 as pa
+//*********************** Debug method *************************//
+i_start = 0
+i_page = 100
+i_maxLogSize = 1000
+i_showHistory = false
+i_showBarIndex = false
+var DebugArray = array.new_string(0)
+var DebugBarArray = array.new_string(0)
+add_to_debug_array(arr, val, maxItems) =>
+    array.unshift(arr, str.tostring(val))
+    if array.size(arr) > maxItems
+        array.pop(arr)
+
+debug(debugMsg) =>
+    if barstate.islast or i_showHistory
+        barTimeString = str.tostring(year, '0000') + '/' + str.tostring(month, '00') + '/' + str.tostring(dayofmonth, '00') + (timeframe.isintraday ? '-' + str.tostring(hour, '00') + ':' + str.tostring(minute, '00') + ':' + str.tostring(second, '00') : '')
+
+        add_to_debug_array(DebugBarArray, i_showBarIndex ? str.tostring(bar_index) : barTimeString, i_maxLogSize)
+        add_to_debug_array(DebugArray, debugMsg, i_maxLogSize)
+//*********************** Debug method *************************//
+
+length = input.int(8, 'Length', group='Zigzag')
+oscillatorType = input.string("rsi", title="Oscillator", inline="osc", options=["cci", "cmo", "cog", "mfi", "roc", "rsi"], group='Oscillator')
+oscLength = input.int(14, title="", inline="osc", group='Oscillator')
+supertrendLength = input.int(5, 'History', inline='st', group='Supertrend')
+drawSupertrend = input.bool(true, "Draw Zigzag Supertrend", inline='st2', group='Supertrend')
+txtSize = input.string(size.tiny, 'Text Size', [size.tiny, size.small, size.normal, size.large, size.huge], inline='txt')
+txtColor = input.color(color.white, '', inline='txt')
+
+
+
+
+getPivotLowDivergenceIndex(divergence)=>
+    switch(divergence)
+        4 => 0  //Bullish Continuation          -   Uptrend HL, HL
+        3 => 1  //Bullish Hidden Divergence     -   Uptrend HL, LL
+        2 => 2  //Bullish Divergence            -   Downtrend LL, HL
+        1 => 3  //Bullish Against Trend         -   Downtrend HL, HL
+        -4 => 4 //Bearish Continuation          -   Downtrend LL, LL
+        -1 => 5 //Bearish Against Trend         -   Uptrend LL, LL
+        => 6    //Indeterminate                 -   Uptrend LL, HL and Downtrend HL, LL
+
+getPivotHighDivergenceIndex(divergence)=>
+    switch(divergence)
+        -4 => 0  //Bearish Continuation          -   Downtrend LH, LH
+        -3 => 1  //Bearish Hidden Divergence     -   Downtrend LH, HH
+        -2 => 2  //Bearish Divergence            -   Uptrend HH, LH
+        -1 => 3  //Bearish Against Trend         -   Uptrend LH, LH
+        4 => 4   //Bullish Continuation          -   Uptrend HH, HH
+        1 => 5   //Bullish Against Trend         -   Downtrend HH, HH
+        => 6     //Indeterminate                 -   Downtrend HH, HL and Uptrend LH, HH
+
+getPivotLowDivergenceColor(index)=>
+    switch(index)
+        0=> color.green
+        1=> color.green
+        2=> color.lime
+        3=> color.lime
+        4=> color.red
+        5=> color.orange
+        6=> color.silver
+
+getPivotHighDivergenceColor(index)=>
+    switch(index)
+        0=> color.red
+        1=> color.orange
+        2=> color.orange
+        3=> color.orange
+        4=> color.green
+        5=> color.lime
+        6=> color.silver
+
+getPivotLowDivergenceLabel(index)=>
+    switch(index)
+        0 => "Bullish Continuation (Uptrend - HL/HL)"
+        1 => "Bullish Hidden Divergence  (Uptrend - HL/LL)"
+        2 => "Bullish Divergence (Downtrend - LL/HL)"
+        3 => "Bullish Against Trend (Downtrend - HL/HL)"
+        4 => "Bearish Continuation (Downtrend - LL/LL)"
+        5 => "Bearish Against Trend (Uptrend - LL/LL)"
+        6 => "Indeterminate (Uptrend - LL/HL, Downtrend - HL/LL)"
+        => "None"
+
+getPivotHighDivergenceLabel(index)=>
+    switch(index)
+        0 => "Bearish Continuation (Downtrend - LH/LH)"
+        1 => "Bearish Hidden Divergence  (Downtrend - LH/HH)"
+        2 => "Bearish Divergence (Uptrend - HH/LH)"
+        3 => "Bearish Against Trend (Uptrend - LH/LH)"
+        4 => "Bullish Continuation (Uptrend - HH/HH)"
+        5 => "Bullish Against Trend (Downtrend - HH/HH)"
+        6 => "Indeterminate (Downtrend - HH/LH, Uptrend - LH/HH)"
+        => "None"
+
+draw_zg_line(idx1, idx2, zigzaglines, zigzaglabels, valueMatrix, directionMatrix, ratioMatrix,  divergenceMatrix, doubleDivergenceMatrix,
+                                         barArray, lineColor, lineWidth, lineStyle) =>
+    if matrix.rows(valueMatrix) > 2
+        idxLen1 = matrix.rows(valueMatrix)-idx1
+        idxLen2 = matrix.rows(valueMatrix)-idx2
+        lastValues = matrix.row(valueMatrix, idxLen1)
+        llastValues = matrix.row(valueMatrix, idxLen2)
+        
+        lastDirections = matrix.row(directionMatrix, idxLen1)
+        lastRatios = matrix.row(ratioMatrix, idxLen1)
+        lastDivergence = matrix.row(divergenceMatrix, idxLen1)
+        lastDoubleDivergence = matrix.row(doubleDivergenceMatrix, idxLen1)
+
+        y1 = array.get(lastValues, 0)
+        y2 = array.get(llastValues, 0)
+        x1 = array.get(barArray, idxLen1)
+        x2 = array.get(barArray, idxLen2)
+        zline = line.new(x1=x1, y1=y1, x2=x2, y2=y2, color=lineColor, width=lineWidth, style=lineStyle)
+        currentDir = y1 > y2? 1 : -1
+        
+        lastDivergenceLabel = currentDir > 0? getPivotHighDivergenceLabel(getPivotHighDivergenceIndex(array.get(lastDivergence, 1))) : 
+                                                 getPivotLowDivergenceLabel(getPivotLowDivergenceIndex(array.get(lastDivergence, 1)))
+        labelStyle = currentDir > 0? label.style_label_down : label.style_label_up
+        lblColor = currentDir > 0? getPivotHighDivergenceColor(getPivotHighDivergenceIndex(array.get(lastDivergence, 1))) :
+                                                 getPivotLowDivergenceColor(getPivotLowDivergenceIndex(array.get(lastDivergence, 1)))
+        zlabel = label.new(x=x1, y=y1, yloc=yloc.price, color=lblColor, style=labelStyle, text=lastDivergenceLabel, 
+                                     textcolor=color.black, size = size.small, tooltip=lastDivergenceLabel)
+        if array.size(zigzaglines) > 0
+            lastLine = array.get(zigzaglines, array.size(zigzaglines)-1)
+            if line.get_x2(lastLine) == x2 and line.get_x1(lastLine) <= x1
+                pa.pop(zigzaglines)
+                pa.pop(zigzaglabels)
+        
+        pa.push(zigzaglines, zline, 500)
+        pa.push(zigzaglabels, zlabel, 500)
+
+draw(matrix<float> valueMatrix, matrix<int> directionMatrix, matrix<float> ratioMatrix,  matrix<int> divergenceMatrix, matrix<int> doubleDivergenceMatrix, array<int> barArray,
+                 bool newZG, bool doubleZG, color lineColor = color.blue, int lineWidth = 1, string lineStyle = line.style_solid)=>
+    var zigzaglines = array.new_line(0)
+    var zigzaglabels = array.new_label(0)
+    if(newZG)
+        if doubleZG
+            draw_zg_line(2, 3, zigzaglines, zigzaglabels, valueMatrix, directionMatrix, ratioMatrix, divergenceMatrix, doubleDivergenceMatrix, barArray,
+                             lineColor, lineWidth, lineStyle)
+
+        if matrix.rows(valueMatrix) >= 2
+            draw_zg_line(1, 2, zigzaglines, zigzaglabels, valueMatrix, directionMatrix, ratioMatrix,  divergenceMatrix, doubleDivergenceMatrix, barArray,
+                             lineColor, lineWidth, lineStyle)
+    [valueMatrix, directionMatrix, ratioMatrix, divergenceMatrix, doubleDivergenceMatrix, barArray, zigzaglines, zigzaglabels]
+
+    
+increment(matrix<int> mtx, row, col)=>matrix.set(mtx, row, col, matrix.get(mtx, row, col)+1)
+
+indicatorHigh = array.new_float()
+indicatorLow = array.new_float()
+indicatorLabels = array.new_string()
+
+[oscHigh, _, _] = eta.oscillator(oscillatorType, oscLength, oscLength, oscLength, high)
+[oscLow, _, _] = eta.oscillator(oscillatorType, oscLength, oscLength, oscLength, low)
+array.push(indicatorHigh, math.round(oscHigh,2))
+array.push(indicatorLow, math.round(oscLow,2))
+array.push(indicatorLabels, oscillatorType+str.tostring(oscLength))
+
+
+[valueMatrix, directionMatrix, ratioMatrix, divergenceMatrix, doubleDivergenceMatrix, barArray, supertrendDir, supertrend, newZG, doubleZG] = 
+                                                         zg.calculate(length, array.from(high, low), indicatorHigh, indicatorLow, supertrendLength = supertrendLength)
+
+lastDirection = matrix.rows(directionMatrix) > 1? matrix.row(directionMatrix, matrix.rows(directionMatrix)-2) : array.new_int()
+lastRatio = matrix.rows(ratioMatrix) > 1? matrix.row(ratioMatrix, matrix.rows(ratioMatrix)-2) : array.new_float()
+lastDivergence = matrix.rows(divergenceMatrix) > 1? matrix.row(divergenceMatrix, matrix.rows(divergenceMatrix)-2) : array.new_int()
+lastDoubleDivergence = matrix.rows(doubleDivergenceMatrix) > 1? matrix.row(doubleDivergenceMatrix, matrix.rows(doubleDivergenceMatrix)-2) : array.new_int()
+
+llastRatio = matrix.rows(ratioMatrix) > 2? matrix.row(ratioMatrix, matrix.rows(ratioMatrix)-3) : array.new_float()
+llastDivergence = matrix.rows(divergenceMatrix) > 2? matrix.row(divergenceMatrix, matrix.rows(divergenceMatrix)-3) : array.new_int()
+llastDoubleDivergence = matrix.rows(doubleDivergenceMatrix) > 2? matrix.row(doubleDivergenceMatrix, matrix.rows(doubleDivergenceMatrix)-3) : array.new_int()
+
+lllastRatio = matrix.rows(ratioMatrix) > 3? matrix.row(ratioMatrix, matrix.rows(ratioMatrix)-4) : array.new_float()
+lllastDivergence = matrix.rows(divergenceMatrix) > 3? matrix.row(divergenceMatrix, matrix.rows(divergenceMatrix)-4) : array.new_int()
+lllastDoubleDivergence = matrix.rows(doubleDivergenceMatrix) > 3? matrix.row(doubleDivergenceMatrix, matrix.rows(doubleDivergenceMatrix)-4) : array.new_int()
+
+var bullishPivotCount = 0
+var bearishPivotCount = 0
+var pivotHighDivergenceStats = matrix.new<int>(4, 7, 0)
+var pivotLowDivergenceStats = matrix.new<int>(4, 7, 0)
+if(array.size(lllastRatio) > 0)
+    priceDirection = array.get(lastDirection, 0)
+    lastPriceDivergence = array.get(llastDivergence, 1)
+    llastPriceDivergence = array.get(lllastDivergence,1)
+    if(math.abs(priceDirection) > 2 or math.abs(priceDirection) < 1)
+        runtime.error('Incorrect direction :'+str.tostring(priceDirection))
+    if(math.sign(priceDirection) > 0)
+        lastIndex = getPivotLowDivergenceIndex(lastPriceDivergence)
+        llastIndex = getPivotHighDivergenceIndex(llastPriceDivergence)
+        rowLast = math.abs(priceDirection) %2
+        rowLLast = 2 + rowLast
+        increment(pivotHighDivergenceStats, rowLast, lastIndex)
+        increment(pivotHighDivergenceStats, rowLLast, llastIndex)
+        bullishPivotCount+=1
+
+    else
+        lastIndex = getPivotHighDivergenceIndex(lastPriceDivergence)
+        llastIndex = getPivotLowDivergenceIndex(llastPriceDivergence)
+        rowLast = math.abs(priceDirection) %2
+        rowLLast = 2 + rowLast
+        increment(pivotLowDivergenceStats, rowLast, lastIndex)
+        increment(pivotLowDivergenceStats, rowLLast, llastIndex)
+        bearishPivotCount+=1
+
+draw(valueMatrix, directionMatrix, ratioMatrix,  divergenceMatrix, doubleDivergenceMatrix, barArray, newZG, doubleZG)
+
+var statsTable = table.new(position=position.top_right, columns=6, rows=20, border_color = color.black, border_width = 2)
+
+table.cell(statsTable, 0, 0, 'Piot High', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.merge_cells(statsTable, 0, 0, 5, 0)
+table.cell(statsTable, 0, 1, 'Last Pivot Trend', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 1, 1, 'HH Count', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 2, 1, 'LH Count', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 3, 1, 'Previous Last Pivot Trend', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 4, 1, 'HH Count', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 5, 1, 'LH Count', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 0, 9, '', bgcolor = color.silver, text_color = txtColor, text_size = size.tiny)
+table.merge_cells(statsTable, 0, 9, 5, 9)
+table.cell(statsTable, 0, 10, 'Piot Low', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.merge_cells(statsTable, 0, 10, 5, 10)
+table.cell(statsTable, 0, 11, 'Last Pivot Trend', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 1, 11, 'LL Count', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 2, 11, 'HL Count', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 3, 11, 'Previous Last Pivot Trend', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 4, 11, 'LL Count', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+table.cell(statsTable, 5, 11, 'HL Count', bgcolor = color.maroon, text_color = txtColor, text_size = txtSize)
+
+if(barstate.islast)
+    for i=0 to matrix.columns(pivotHighDivergenceStats)-1
+        hhStatLPivot = matrix.get(pivotHighDivergenceStats, 0, i)
+        lhStatLPivot = matrix.get(pivotHighDivergenceStats, 1, i)
+
+        hhStatLLPivot = matrix.get(pivotHighDivergenceStats, 2, i)
+        lhStatLLPivot = matrix.get(pivotHighDivergenceStats, 3, i)
+
+        
+        table.cell(statsTable, 0, 2+i, getPivotLowDivergenceLabel(i), bgcolor = color.teal, text_color = txtColor, text_size = txtSize)
+        table.cell(statsTable, 3, 2+i, getPivotHighDivergenceLabel(i), bgcolor = color.teal, text_color = txtColor, text_size = txtSize)
+        
+        table.cell(statsTable, 1, 2+i, str.tostring(hhStatLPivot), bgcolor = color.new(color.green, 70), text_color = txtColor, text_size = txtSize)
+        table.cell(statsTable, 2, 2+i, str.tostring(lhStatLPivot), bgcolor = color.new(color.red, 70), text_color = txtColor, text_size = txtSize)
+
+        table.cell(statsTable, 4, 2+i, str.tostring(hhStatLLPivot), bgcolor = color.new(color.green, 70), text_color = txtColor, text_size = txtSize)
+        table.cell(statsTable, 5, 2+i, str.tostring(lhStatLLPivot), bgcolor = color.new(color.red, 70), text_color = txtColor, text_size = txtSize)
+
+    for i=0 to matrix.columns(pivotLowDivergenceStats)-1
+        llStatLPivot = matrix.get(pivotLowDivergenceStats, 0, i)
+        hlStatLPivot = matrix.get(pivotLowDivergenceStats, 1, i)
+
+        llStatLLPivot = matrix.get(pivotLowDivergenceStats, 2, i)
+        hlStatLLPivot = matrix.get(pivotLowDivergenceStats, 3, i)
+
+        table.cell(statsTable, 0, 12+i, getPivotHighDivergenceLabel(i), bgcolor = color.teal, text_color = txtColor, text_size = txtSize)
+        table.cell(statsTable, 3, 12+i, getPivotLowDivergenceLabel(i), bgcolor = color.teal, text_color = txtColor, text_size = txtSize)
+        
+        table.cell(statsTable, 1, 12+i, str.tostring(llStatLPivot), bgcolor = color.new(color.red, 70), text_color = txtColor, text_size = txtSize)
+        table.cell(statsTable, 2, 12+i, str.tostring(hlStatLPivot), bgcolor = color.new(color.green, 70), text_color = txtColor, text_size = txtSize)
+
+        table.cell(statsTable, 4, 12+i, str.tostring(llStatLLPivot), bgcolor = color.new(color.red, 70), text_color = txtColor, text_size = txtSize)
+        table.cell(statsTable, 5, 12+i, str.tostring(hlStatLLPivot), bgcolor = color.new(color.green, 70), text_color = txtColor, text_size = txtSize)
+
+plot(drawSupertrend? supertrend:na, color=supertrendDir>0? color.green:color.red, style=plot.style_linebr)
+
+//************************************************************ Print debug message on table ********************************************************/
+var debugTable = table.new(position=position.bottom_right, columns=2, rows=i_page + 1, border_width=1)
+if array.size(DebugArray) > 0
+    table.cell(table_id=debugTable, column=0, row=0, text=i_showBarIndex ? 'Bar Index' : 'Bar Time', bgcolor=color.teal, text_color=txtColor, text_size=size.normal)
+    table.cell(table_id=debugTable, column=1, row=0, text='Debug Message', bgcolor=color.teal, text_color=txtColor, text_size=size.normal)
+    for i = 0 to math.min(array.size(DebugArray) - 1 - i_start, i_page - 1) by 1
+        table.cell(table_id=debugTable, column=0, row=i + 1, text=array.get(DebugBarArray, i + i_start), bgcolor=color.black, text_color=txtColor, text_size=size.normal)
+        table.cell(table_id=debugTable, column=1, row=i + 1, text=array.get(DebugArray, i + i_start), bgcolor=color.black, text_color=txtColor, text_size=size.normal)
+//************************************************************ Finish Printing ********************************************************/

@@ -1,0 +1,38 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © user1928374560XYZ
+
+//@version=5
+indicator("Bitcoin:Bvol24h&Bvol7d", shorttitle = 'nbdys_Script', overlay = true)
+
+cVol24 = request.security("BITMEX:BVOL24H", timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on)
+
+plot(cVol24)
+
+Thresh1 = input.float(0.5,"Vol24h", step = 0.01)
+
+
+cVol7 = request.security("BITMEX:BVOL7D", timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on)
+
+plot(cVol7)
+
+Thresh2 = input.float(3.5,"Vol7D", step = 0.1)
+
+
+cVol = request.security("BITMEX:BVOL", timeframe.period, close, barmerge.gaps_on, barmerge.lookahead_on)
+
+Thresh3 = input.float(15,"BVOL", step = 0.5)
+
+plot(cVol)
+
+//
+
+Average = (cVol + cVol24 + cVol7) / 3
+plot (Average)
+
+Signal = cVol24 <= Thresh1 and cVol7 <= Thresh2 and cVol <= Thresh3 
+
+plotshape(Signal, color=color.new(color.white, 75), style=shape.square, location=location.belowbar, size=size.tiny, textcolor=color.new(color.white, 75)) 
+
+Signal_Color = cVol24 <= Thresh1 and cVol7 <= Thresh2 and cVol <= Thresh3 ? color.red : na
+
+barcolor(Signal_Color)

@@ -1,0 +1,142 @@
+//@version=5
+strategy(title='Balance of Power', format=format.price, precision=2, process_orders_on_close = true, default_qty_type=strategy.percent_of_equity, default_qty_value=100, initial_capital=1000, overlay = true)
+
+//
+
+BoP = (close - open) / (high - low)
+
+sumEMA = math.avg(BoP, ta.ema(BoP, 3), ta.ema(BoP, 6), ta.ema(BoP, 9), ta.ema(BoP, 12), ta.ema(BoP, 21))
+
+vol = math.sum(volume, input(1))
+
+projected = sumEMA + (sumEMA - sumEMA[1]) * volume[1] / vol + (sumEMA[1] - sumEMA[2]) * volume[2] / vol + (sumEMA[2] - sumEMA[3]) * volume[3] / vol
+
+//
+
+////////////////////////////// Adding Fisher Transform for Bottoming Selected data //////////////////////////////
+
+//sHigh = request.security(syminfo.tickerid , timeframe.period, high, barmerge.gaps_on)
+//sLow = request.security(syminfo.tickerid , timeframe.period, low, barmerge.gaps_on)
+
+//
+
+//_src = (sHigh + sLow) / 2
+//_window = input(6, title='f_len')
+
+//
+// Inputs
+
+f_fisher(_src, _window) =>
+    min_Median = ta.lowest(_src, _window)
+    max_Median = ta.highest(_src, _window)
+    temp = (_src - min_Median) / (max_Median - min_Median)
+    value = 0.0
+    value := .5 * 2 * ((temp - .5) + (.5 * nz(value[1])))
+    value1 = value >= .9999 ? .9999 : value <= -.9999 ? -.9999 : value
+    temp2 = (1 + value1) / (1 - value1)
+    fisher_Value = 0.0
+    fisher_Value := (.25 * math.log(temp2)) + (.5 * nz(fisher_Value[1]))
+    fisher_Value
+
+//  ||<••   END FISHER FUNCTION
+
+//barssincecount = input(11, title = "_f_barssince_signal")
+//_f_below_threshhold = input(0)
+
+//_fish = f_fisher(_src, _window)
+//_fish_bs_signal = _fish <= _f_below_threshhold
+//_fish_signal = ta.barssince(_fish_bs_signal) <= barssincecount
+
+//
+
+//
+
+above_MA = close >= ta.hma(close, input(39))
+below_MA = close <= ta.hma(close, input(387))
+
+//
+
+trigger = ta.crossover(projected, 0) and above_MA
+exit = ta.crossunder(projected, 0) and below_MA
+trigger2 = ta.barssince(exit) <= input(140)
+
+entry_condition   = trigger 
+TPcondition_exit  = exit
+
+look = input.int(defval = 28, minval = 0, maxval = 500, title = "Lookback period: ")
+
+Probabilities(lookback) =>
+
+    isActiveLong = false
+    isActiveLong := nz(isActiveLong[1], false)
+    isSellLong = false
+    isSellLong := nz(isSellLong[1], false)
+
+    int positive_results = 0
+    int negative_results = 0
+
+    float positive_percentage_probabilities = 0 
+    float negative_percentage_probabilities = 0 
+
+    LONG = not isActiveLong and entry_condition == true 
+    CLOSE_LONG_TP = not isSellLong and TPcondition_exit == true
+
+    p = ta.valuewhen(LONG, close, 0)
+    p2 = ta.valuewhen(CLOSE_LONG_TP, close, 0)
+
+    for i = 1 to lookback
+
+	    if (LONG[i])
+            isActiveLong := true
+		    isSellLong := false
+
+        if (CLOSE_LONG_TP[i])
+	        isActiveLong := false
+	        isSellLong := true
+
+        if p[i] > p2[i]
+            positive_results += 1
+        else 
+            negative_results += 1 
+
+	    positive_relative_probabilities = positive_results / lookback
+	    negative_relative_probabilities = negative_results / lookback
+	    positive_percentage_probabilities := positive_relative_probabilities * 100
+	    negative_percentage_probabilities := negative_relative_probabilities * 100
+
+    positive_percentage_probabilities
+	
+probabilities = Probabilities(look)
+
+//
+
+//---- TP
+use_TP = input(true, title = 'use take profit levels?', tooltip="1.04 = 4%, 1.03 = .03 = 3%, etc")
+
+var float FIRST_LVL_LNG_PROFIT = input.float(1.04, title="1st long tp", step = 0.01)
+var float SECOND_LVL_LNG_PROFIT = input.float(1.03, title="2nd long tp",  step = 0.01)
+var float THIRD_LVL_LNG_PROFIT = input.float(1.02, title="3rd long tp", step = 0.01)
+
+//----- SL
+
+use_SL = input(true, title = 'use Stop Loss?')
+// Define the stop loss percentage
+stop_loss_percent = input.float(1.2, title="Stop Loss Percent", step=0.1)
+
+// Calculate the stop loss level
+stop_loss = close * (1 - stop_loss_percent/100)
+
+Kelly_Probability = input(50, "Kelly_Probability")
+
+if trigger==true and strategy.opentrades==0 and probabilities >= Kelly_Probability and trigger2 == true//_fish_signal
+	strategy.entry('Long', strategy.long)
+    strategy.exit("Stop Loss", "Long", stop=use_SL ? stop_loss : na)
+if use_TP ? trigger==true and probabilities >= 51 and strategy.position_size > 0 and strategy.position_avg_price * FIRST_LVL_LNG_PROFIT < close : na
+    strategy.close("Long", "Take Profit 1", qty=strategy.position_size/2) 
+if use_TP ? trigger==true and probabilities >= 51 and strategy.position_size > 0 and strategy.position_avg_price * SECOND_LVL_LNG_PROFIT < close : na
+    strategy.close("Long", "Take Profit 2", qty=strategy.position_size/2)
+if use_TP ? trigger==true and probabilities >= 51 and strategy.position_size > 0 and strategy.position_avg_price * THIRD_LVL_LNG_PROFIT < close : na
+    strategy.close("Long", "Take Profit 3", qty=strategy.position_size/2)
+if exit==true 
+    strategy.close('Long', comment = "Cover/Short")
+    //strategy.entry('Short', strategy.short)

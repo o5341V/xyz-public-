@@ -1,0 +1,47 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © user1928374560XYZ
+
+//@version=5
+
+//This script appears to be using the Tan function to map the momentum of the asset (calculated using the WMA of the difference between the close and open prices) to a theoretical sine cycle, and then plotting the result.
+
+//To reduce noise, you could try using a moving average or a low pass filter on the momentum or i_accel variables before applying the arctan function. This will smooth out the fluctuations and reduce the noise in the resulting plot.
+
+//A noise gate filter could also be used to only plot values above a certain threshold, this will help remove the noise from the plot.
+
+//Additionally, you could try to make the plot more Gaussian by applying a Gaussian filter on the i_accel variable. This will help to smooth out the plot and make it more Gaussian.
+
+indicator(title='Circular Logic by ChatGPT', shorttitle='sine', precision=3)
+
+period = input(252, title='Lengh of lookback for momentum')
+
+ma_period = input(252, title='MA period for noise reduction')
+
+
+pi = 3.14159265
+
+movement = close - open
+
+momentum = ta.wma(movement, period) * period
+
+// new
+
+//
+
+// Apply moving average filter to i_accel
+i_accel = momentum - momentum[1] / period
+i_accel_ma = ta.sma(i_accel, ma_period)
+
+//
+
+itan = math.tan(math.atan(i_accel_ma) + pi / 4)
+Plot_tan = plot(math.max(math.min(itan, 2), -2), color=color.new(color.yellow, 20))
+
+icos = math.cos(math.atan(i_accel_ma) + pi / 4)
+Plot_cos = plot(icos, color=color.new(color.red, 20))
+
+isin = math.sin(math.atan(i_accel_ma) - pi / 4)
+Plot_sin = plot(icos * itan, color=color.new(color.green, 20))
+
+//
+

@@ -1,0 +1,129 @@
+//@version=5
+indicator('Average Directional Index-Buschi', shorttitle='Sentiment2')
+
+adxlen1 = input(10, title='ADX Smoothing')
+dilen = input(10, title='DI Length')
+wtreshold = input(35, title='Weak Threshold')
+streshold = input(40, title='Strong Threshold')
+
+up = ta.change(high)
+down = -ta.change(low)
+trur = ta.rma(ta.tr, adxlen1)
+plus = fixnan(100 * ta.rma(up > down and up > 0 ? up : 0, dilen) / trur)
+minus = fixnan(100 * ta.rma(down > up and down > 0 ? down : 0, dilen) / trur)
+sum = plus + minus
+
+//Sentiment
+perioda = 51
+periodb = 47
+roundingvalue = 4
+
+llow = ta.lowest(low, perioda)
+
+hhigh = ta.highest(high, perioda)
+
+c_ln = close - llow
+
+hn_ln = hhigh - llow
+
+denominator = math.sum(hn_ln, perioda)
+
+numerator = math.sum(c_ln, periodb)
+
+marketsentiment = 100 * (numerator / denominator)
+
+adx1 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 1)
+adx11 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 2)
+adx111 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 3)
+adx1111 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 4)
+adx11111 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 5)
+adx111111 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 6)
+adx2 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 7)
+adx22 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 8)
+adx222 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 9)
+adx2222 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 10)
+adx22222 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 14)
+adx222222 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 20)
+adx3 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 25)
+adx33 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 30)
+adx333 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 35)
+adx3333 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 40)
+adx33333 = 100 * ta.rma(math.abs(plus - minus) / (sum == 0 ? 1 : sum), 50)
+
+color_1 = color.new(#2a2e39, 85)
+adx_color3 = adx3 > streshold and plus >= minus ? #f44336 : adx3 > wtreshold and plus >= minus ? #000000 : adx3 > streshold and plus < minus ? #00ff6d : adx3 > wtreshold and plus < minus ? #000000 : color_1
+color_2 = color.new(#2a2e39, 85)
+adx_color33 = adx33 > streshold and plus >= minus ? #f44336 : adx33 > wtreshold and plus >= minus ? #000000 : adx33 > streshold and plus < minus ? #00ff6d : adx33 > wtreshold and plus < minus ? #000000 : color_2
+color_3 = color.new(#2a2e39, 85)
+adx_color333 = adx333 > streshold and plus >= minus ? #f44336 : adx333 > wtreshold and plus >= minus ? #000000 : adx333 > streshold and plus < minus ? #00ff6d : adx333 > wtreshold and plus < minus ? #000000 : color_3
+color_4 = color.new(#2a2e39, 85)
+adx_color3333 = adx3333 > streshold and plus >= minus ? #f44336 : adx3333 > wtreshold and plus >= minus ? #000000 : adx3333 > streshold and plus < minus ? #00ff6d : adx3333 > wtreshold and plus < minus ? #000000 : color_4
+color_5 = color.new(#2a2e39, 85)
+adx_color33333 = adx33333 > streshold and plus >= minus ? #f44336 : adx33333 > wtreshold and plus >= minus ? #000000 : adx33333 > streshold and plus < minus ? #00ff6d : adx33333 > wtreshold and plus < minus ? #000000 : color_5
+color_6 = color.new(#2a2e39, 85)
+adx_color1 = adx1 > streshold and plus >= minus ? #f44336 : adx1 > wtreshold and plus >= minus ? #000000 : adx1 > streshold and plus < minus ? #00ff6d : adx1 > wtreshold and plus < minus ? #000000 : color_6
+color_7 = color.new(#2a2e39, 100)
+color_8 = color.new(#2a2e39, 100)
+color_9 = color.new(#2a2e39, 100)
+adx_color11 = adx11 > streshold and plus >= minus ? #f44336 : adx11 > wtreshold and plus >= minus ? color_7 : adx11 > streshold and plus < minus ? #00ff6d : adx11 > wtreshold and plus < minus ? color_8 : color_9
+color_10 = color.new(#2a2e39, 85)
+adx_color111 = adx111 > streshold and plus >= minus ? #f44336 : adx111 > wtreshold and plus >= minus ? #000000 : adx111 > streshold and plus < minus ? #00ff6d : adx111 > wtreshold and plus < minus ? #000000 : color_10
+color_11 = color.new(#2a2e39, 85)
+adx_color1111 = adx1111 > streshold and plus >= minus ? #f44336 : adx1111 > wtreshold and plus >= minus ? #000000 : adx1111 > streshold and plus < minus ? #00ff6d : adx1111 > wtreshold and plus < minus ? #000000 : color_11
+color_12 = color.new(#2a2e39, 85)
+adx_color11111 = adx11111 > streshold and plus >= minus ? #f44336 : adx11111 > wtreshold and plus >= minus ? #000000 : adx11111 > streshold and plus < minus ? #00ff6d : adx11111 > wtreshold and plus < minus ? #000000 : color_12
+color_13 = color.new(#2a2e39, 85)
+adx_color111111 = adx111111 > streshold and plus >= minus ? #f44336 : adx111111 > wtreshold and plus >= minus ? #000000 : adx111111 > streshold and plus < minus ? #00ff6d : adx111111 > wtreshold and plus < minus ? #000000 : color_13
+color_14 = color.new(#2a2e39, 85)
+adx_color2 = adx2 > streshold and plus >= minus ? #f44336 : adx2 > wtreshold and plus >= minus ? #000000 : adx2 > streshold and plus < minus ? #00ff6d : adx2 > wtreshold and plus < minus ? #000000 : color_14
+color_15 = color.new(#2a2e39, 85)
+adx_color22 = adx22 > streshold and plus >= minus ? #f44336 : adx22 > wtreshold and plus >= minus ? #000000 : adx22 > streshold and plus < minus ? #00ff6d : adx22 > wtreshold and plus < minus ? #000000 : color_15
+color_16 = color.new(#2a2e39, 85)
+adx_color222 = adx222 > streshold and plus >= minus ? #f44336 : adx222 > wtreshold and plus >= minus ? #000000 : adx222 > streshold and plus < minus ? #00ff6d : adx222 > wtreshold and plus < minus ? #000000 : color_16
+color_17 = color.new(#2a2e39, 85)
+adx_color2222 = adx2222 > streshold and plus >= minus ? #f44336 : adx2222 > wtreshold and plus >= minus ? #000000 : adx2222 > streshold and plus < minus ? #00ff6d : adx2222 > wtreshold and plus < minus ? #000000 : color_17
+color_18 = color.new(#2a2e39, 85)
+adx_color22222 = adx22222 > streshold and plus >= minus ? #f44336 : adx22222 > wtreshold and plus >= minus ? #000000 : adx22222 > streshold and plus < minus ? #00ff6d : adx22222 > wtreshold and plus < minus ? #000000 : color_18
+color_19 = color.new(#2a2e39, 85)
+adx_color222222 = adx222222 > streshold and plus >= minus ? #f44336 : adx222222 > wtreshold and plus >= minus ? #000000 : adx222222 > streshold and plus < minus ? #00ff6d : adx222222 > wtreshold and plus < minus ? #000000 : color_19
+
+//
+
+PlotExcel = (adx1 + adx11 + adx111 + adx1111 + adx11111 + adx111111 + adx222222 + adx22222 + adx2222 + adx222 + adx22 + adx2 + adx3 + adx33 + adx333 + adx3333 + adx33333) / 17
+
+color_20 = color.new(#2a2e39, 85)
+PlotExcel_Color = PlotExcel > streshold and plus >= minus ? #f44336 : PlotExcel > wtreshold and plus >= minus ? #000000 : PlotExcel > streshold and plus < minus ? #00ff6d : PlotExcel > wtreshold and plus < minus ? #000000 : color_20
+
+plot(series=PlotExcel, title='Bull Power Level 1 ', color=PlotExcel_Color, style=plot.style_area)
+
+//
+bull_PLOT = PlotExcel > streshold and plus < minus
+
+bullish_PLOT = bull_PLOT[1] and close > close[1]
+
+//plotshape(bullish_PLOT, color=color.new(color.white, 10), style=shape.circle, location=location.belowbar, size=size.tiny)
+//
+
+plot(adx1, title='ADX', color=adx_color1, style=plot.style_stepline, linewidth=1)
+plot(adx11, title='ADX', color=adx_color11, style=plot.style_stepline, linewidth=1)
+plot(adx111, title='ADX', color=adx_color111, style=plot.style_stepline, linewidth=1)
+plot(adx1111, title='ADX', color=adx_color1111, style=plot.style_stepline, linewidth=1)
+plot(adx11111, title='ADX', color=adx_color11111, style=plot.style_stepline, linewidth=1)
+plot(adx111111, title='ADX', color=adx_color111111, style=plot.style_stepline, linewidth=1)
+plot(adx2, title='ADX', color=adx_color2, style=plot.style_stepline, linewidth=1)
+plot(adx22, title='ADX', color=adx_color22, style=plot.style_stepline, linewidth=1)
+plot(adx222, title='ADX', color=adx_color222, style=plot.style_stepline, linewidth=1)
+plot(adx2222, title='ADX', color=adx_color2222, style=plot.style_stepline, linewidth=1)
+plot(adx22222, title='ADX', color=adx_color22222, style=plot.style_stepline, linewidth=1)
+plot(adx222222, title='ADX', color=adx_color222222, style=plot.style_stepline, linewidth=1)
+plot(adx3, title='ADX', color=adx_color3, style=plot.style_stepline, linewidth=2)
+plot(adx33, title='ADX', color=adx_color33, style=plot.style_stepline, linewidth=2)
+plot(adx333, title='ADX', color=adx_color333, style=plot.style_stepline, linewidth=2)
+plot(adx3333, title='ADX', color=adx_color3333, style=plot.style_stepline, linewidth=2)
+plot(adx33333, title='ADX', color=adx_color33333, style=plot.style_stepline, linewidth=2)
+//plot(adx22222, title='ADX', color=white, linewidth=2)
+
+//difference = (adx22222-marketsentiment) * 100
+//plot(difference,style=area, color=adx_color222222)
+
+

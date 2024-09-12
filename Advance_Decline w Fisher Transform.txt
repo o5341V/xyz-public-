@@ -1,0 +1,84 @@
+//@version=5
+indicator('ADVN-DECL', 'ADVN-DECL', overlay=false, precision=1)
+
+// Advancing - Declining issues indicator which you can use for Bitcoin trading
+// if you, like me, believe that cryptocurrency is highly correlated with the
+// activity on the stock exchanges (yes, the PROs are here, we just didn't know
+// it yet)
+//
+// This indicator is based on showing the data, as much as possible, as it is,
+// and not messing it up by calculating stuff. Calculation should be used to
+// better understand what the data represents, and not to show beatiful things
+// which are, in fact, not present.
+//
+// You could, for example, take ADVN and DECL, calculate rma() moving averages
+// and make a RSI out of it. The result is very interesting when applied on the
+// daily time frame, but not as useful for trading.
+//
+// By the way, I recommend enabling this option:
+// 
+// Right click - Settings - Timezones / Sessions
+// Please check "Extended hours (Intraday Only)"
+//
+// I could do it in code with the ticker() function, but I'm under the
+// impression that then, free TV users would not be able to use the indicator.
+//
+// Perhaps this is not true.
+
+sHigh = request.security(syminfo.tickerid , timeframe.period, high)
+sLow = request.security(syminfo.tickerid , timeframe.period, low)
+//
+_src = (sHigh + sLow) / 2
+
+src = input(close, 'Source')  // not sure what to use, I think close or high is correct
+
+normalize(_src, _min, _max) =>
+// Normalizes series with unknown min/max using historical min/max.
+// _src      : series to rescale.
+// _min, _min: min/max values of rescaled series.
+    var _historicMin = +10e10
+    var _historicMax = -10e10
+    _historicMin := math.min(nz(_src, _historicMin), _historicMin)
+    _historicMax := math.max(nz(_src, _historicMax), _historicMax)
+    _min + (_max - _min) * (_src - _historicMin) / math.max(_historicMax - _historicMin, 10e-10)
+
+//z
+
+f_zscore(_src, _length, _smooth) =>
+    _mean = ta.sma(_src, _length)
+    _std = ta.stdev(_src - _mean, _length)
+    _value = (_src - _mean) / _std
+    _dema = ta.ema(ta.ema(_value, _smooth), _smooth)
+    [_value, _dema]
+
+smooth = input(3)
+
+x = input(21)
+
+// Read ADVN and DECL data from every stock exchange
+gaps = barmerge.gaps_on  // don't let TV fake the data when there is none
+advn = nz(request.security('ADVN.NY', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('ADVN.NQ', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('ADVN.US', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('ADVN.DJ', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('ADVN.AX', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('ADVN.AM', timeframe.period, src, barmerge.gaps_on))
+decl = nz(request.security('DECL.NY', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('DECL.NQ', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('DECL.US', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('DECL.DJ', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('DECL.AX', timeframe.period, src, barmerge.gaps_on)) + nz(request.security('DECL.AM', timeframe.period, src, barmerge.gaps_on))
+
+advn2 = nz(request.security('ADVN', timeframe.period, src, barmerge.gaps_on))
+decl2 = nz(request.security('DECL', timeframe.period, src, barmerge.gaps_on))
+
+r = ta.ema(advn - decl, x)  // This is the main output: Advancing Issues - Declining Issues
+
+f_fisher(_src, _window) =>
+    min_Median = ta.lowest(r, _window)
+    max_Median = ta.highest(r, _window)
+    temp = (r - min_Median) / (max_Median - min_Median)
+    value = 0.0
+    value := .5 * 2 * ((temp - .5) + (.5 * nz(value[1])))
+    value1 = value >= .9999 ? .9999 : value <= -.9999 ? -.9999 : value
+    temp2 = (1 + value1) / (1 - value1)
+    fisher_Value = 0.0
+    fisher_Value := (.25 * math.log(temp2)) + (.5 * nz(fisher_Value[1]))
+    fisher_Value
+
+Fish1 = f_fisher(_src, input(21))
+plot(Fish1,"FT", color.red)
+
+// Plot the main output, over everything else
+plot(r, "ema", style=plot.style_histogram)
