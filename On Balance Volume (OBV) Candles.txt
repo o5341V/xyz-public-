@@ -1,0 +1,23 @@
+
+//@version=5
+indicator('OBV Candles', timeframe='', precision = 1)
+
+palette = close >= open ? #22ab94 : #ff5252
+
+o = ta.obv[1] /1000/1000/1000
+h = ta.obv /1000/1000/1000
+l = ta.obv[1] /1000/1000/1000
+c = ta.obv /1000/1000/1000
+
+var cumVol = 0.
+cumVol += nz(volume)
+if barstate.islast and cumVol == 0
+    runtime.error("No volume is provided by the data vendor.")
+src = close
+obv = ta.cum(math.sign(ta.change(src)) * volume) /1000/1000/1000
+
+plot(obv, color=color.white, title="OnBalanceVolume")
+
+plotcandle(o, h, l, c, color = palette, wickcolor=#ffffff, bordercolor = #434651)
+
+

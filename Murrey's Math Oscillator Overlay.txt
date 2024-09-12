@@ -1,0 +1,77 @@
+//@version=5
+
+//strategy(title="Murrey's Math Signals", shorttitle="MMs", overlay=true, precision = 1)
+indicator(title="Murrey's Math Signals", shorttitle="MMs", overlay=true, precision = 1)
+
+//EMA
+malen = input(5, title="Length")
+src = input(hl2, title="Source")
+
+out = ta.ema(src, malen)
+
+// Inputs
+length = input(64, title = "Look back Length")
+mult = input(0.125, title = "Mutiplier; Only Supports 0.125 = 1/8")
+
+// Donchanin Channel
+hi = ta.highest(high, length)
+lo = ta.lowest(low, length)
+rangedc = hi - lo
+multiplier = (rangedc) * mult
+midline = lo + multiplier * 4
+
+oscillator = (close - midline)/(rangedc/2)
+
+a = oscillator > 0 and oscillator < mult*2
+b = oscillator > 0 and oscillator < mult*4
+c = oscillator > 0 and oscillator < mult*6
+d = oscillator > 0 and oscillator < mult*8
+
+z = oscillator < 0 and oscillator > -mult*2
+y = oscillator < 0 and oscillator > -mult*4
+x = oscillator < 0 and oscillator > -mult*6
+w = oscillator < 0 and oscillator > -mult*8
+
+//Bottoms 
+
+xyz_ = oscillator <= -mult*7
+abc_ = oscillator >= -mult*6
+
+Bottom1 = xyz_[1] and abc_ == true
+
+Bottom2 =  close > out
+
+Bottom3 = (Bottom1 and Bottom2) == true
+
+xyz_2 = oscillator <= -mult*6
+abc_2 = oscillator > -mult*5
+
+Bottom_2 = xyz_2[1] and abc_2 == true
+
+Barcolor = oscillator <= -mult*5 and (close < close[1]) == true ? color.new(#9598a1, 0) : oscillator <= -mult*5 and (close > close[1]) == true  ? color.new(#ffffff, 0) : (xyz_[1] and abc_) and (close > close[1]) ? color.new(#ffffff, 0) : #434651
+
+barcolor(Barcolor)
+
+StrongSignal = (xyz_[1] and abc_) and (close > close[1])
+
+plotshape(StrongSignal, color=color.white, text = "", style=shape.cross, location=location.belowbar, size=size.tiny,textcolor=color.red, transp=10)
+
+plotchar(Bottom3, title="shapes", char = "🚀", location=location.bottom, size=size.tiny,textcolor=color.white, transp=10)
+
+if StrongSignal
+    
+    myLine3 = line.new(bar_index, low, bar_index + 1, low, extend=extend.right, color = #ff0000)
+    //myLabel3 = label.new(bar_index + 15, low - 35, style=label.style_none, text="Stop Loss")
+    
+    line.delete(myLine3[1])
+    //label.delete(myLabel3[1])
+
+
+//plot(oscillator)
+
+//Strategy
+
+//if Bottom == true
+//    strategy.order("+", strategy.long)
+//if Top == true
+//    strategy.close_all()

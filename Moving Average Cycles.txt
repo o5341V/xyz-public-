@@ -1,0 +1,109 @@
+//@version=5
+indicator("Moving Average Cycles", overlay=false, shorttitle="MA Cycles")
+
+// Inputs
+maPeriod = input.int(50, title="MA Period", minval=1)
+maResolution = input.timeframe(title="MA Resolution", defval="D", options=["D", "W", "M"])
+
+// Calculate the moving average with user-selected resolution
+movingAverage() => request.security(syminfo.tickerid, maResolution, ta.sma(close, maPeriod))
+
+// Function to check if the price has crossed the MA
+priceCrossedMA() => 
+    (close[1] < movingAverage()[1] and close > movingAverage()) or (close[1] > movingAverage()[1] and close < movingAverage())
+
+// Custom sign function
+customSign(value) =>
+    value > 0 ? 1 : -1
+
+// Initialize counters and accumulators
+var int counter = 0
+var int bullCycleCandles = 0
+var float maxBullCycleDist = 0.0 // Tracks maximum bull cycle distance
+var int bearCycleCandles = 0
+var float maxBearCycleDist = 0.0 // Tracks maximum bear cycle distance
+var int bullCycles = 0
+var int bearCycles = 0
+
+// Initialize variables to hold averages and overall maximums
+var float avgBullCycleCandles = 0.0
+var float avgBearCycleCandles = 0.0
+var float overallMaxBullCycleDist = 0.0
+var float overallMaxBearCycleDist = 0.0
+var float avgBullCycleDist = 0.0
+var float avgBearCycleDist = 0.0
+var int maxBullCycleCandles = 0
+var int maxBearCycleCandles = 0
+
+// New variables for current max cycle distances
+var float currentMaxBullCycleDist = 0.0
+var float currentMaxBearCycleDist = 0.0
+
+// Declare crossed and percentDistance in the global scope
+var bool crossed = false
+var float percentDistance = na
+
+// Main script logic
+crossed := priceCrossedMA()
+percentDistance := ((close - movingAverage()) / movingAverage()) * 100
+
+if crossed
+    if customSign(close - movingAverage()) > 0
+        // Bear cycle just ended
+        bearCycles := bearCycles + 1
+        avgBearCycleCandles := bearCycles > 0 ? (avgBearCycleCandles * (bearCycles - 1) + nz(bearCycleCandles)) / bearCycles : 0
+        avgBearCycleDist := bearCycles > 0 ? (nz(avgBearCycleDist) * (bearCycles - 1) + nz(currentMaxBearCycleDist)) / bearCycles : 0
+        overallMaxBearCycleDist := math.max(overallMaxBearCycleDist, nz(currentMaxBearCycleDist, 0))
+        maxBearCycleCandles := math.max(maxBearCycleCandles, bearCycleCandles)
+        // Reset bear cycle accumulators
+        bearCycleCandles := 0
+        currentMaxBearCycleDist := 0.0
+    else
+        // Bull cycle just ended
+        bullCycles := bullCycles + 1
+        avgBullCycleCandles := bullCycles > 0 ? (avgBullCycleCandles * (bullCycles - 1) + nz(bullCycleCandles)) / bullCycles : 0
+        avgBullCycleDist := bullCycles > 0 ? (nz(avgBullCycleDist) * (bullCycles - 1) + nz(currentMaxBullCycleDist)) / bullCycles : 0
+        overallMaxBullCycleDist := math.max(overallMaxBullCycleDist, nz(currentMaxBullCycleDist, 0))
+        maxBullCycleCandles := math.max(maxBullCycleCandles, bullCycleCandles)
+        // Reset bull cycle accumulators
+        bullCycleCandles := 0
+        currentMaxBullCycleDist := 0.0
+    counter := customSign(close - movingAverage())
+else
+    if counter > 0
+        // In bull cycle
+        bullCycleCandles := bullCycleCandles + 1
+        currentMaxBullCycleDist := math.max(currentMaxBullCycleDist, math.abs(percentDistance))
+    else if counter < 0
+        // In bear cycle
+        bearCycleCandles := bearCycleCandles + 1
+        currentMaxBearCycleDist := math.max(currentMaxBearCycleDist, math.abs(percentDistance))
+    counter := counter + customSign(close - movingAverage())
+
+// Plot the histogram (Candles from MA) and area (% Distance)
+histColor = counter > 0 ? color.new(color.green, 0) : color.new(color.red, 0)
+plot(counter, style=plot.style_columns, color=histColor, linewidth=2, title="Candles")
+plot(percentDistance, style=plot.style_histogram, color=color.rgb(255, 255, 255, 25), linewidth=2, title="% Distance")
+
+// Table for displaying metrics
+table t = table.new(position = position.top_right, columns = 2, rows = 10, bgcolor=color.new(color.black, 90), border_color=color.gray, border_width=1)
+table.cell(t, 0, 0, "Current Candles", text_color=color.white)
+table.cell(t, 1, 0, str.tostring(counter), text_color=color.white)
+table.cell(t, 0, 1, "Current Max % Dist", text_color=color.white)
+table.cell(t, 1, 1, str.tostring(counter > 0 ? currentMaxBullCycleDist : currentMaxBearCycleDist, "#.#"), text_color=color.white)
+table.cell(t, 0, 2, "Max Bull Candles", text_color=color.green, text_size=size.small)
+table.cell(t, 1, 2, str.tostring(maxBullCycleCandles), text_color=color.green, text_size=size.small)
+table.cell(t, 0, 3, "Max Bull % Dist", text_color=color.green, text_size=size.small)
+table.cell(t, 1, 3, str.tostring(overallMaxBullCycleDist, "#.#"), text_color=color.green, text_size=size.small)
+table.cell(t, 0, 4, "Avg Bull Candles", text_color=color.rgb(129, 213, 132), text_size=size.small)
+table.cell(t, 1, 4, str.tostring(avgBullCycleCandles, "#.#"), text_color=color.rgb(129, 213, 132), text_size=size.small)
+table.cell(t, 0, 5, "Avg Bull % Dist", text_color=color.rgb(129, 213, 132), text_size=size.small)
+table.cell(t, 1, 5, str.tostring(avgBullCycleDist, "#.#"), text_color=color.rgb(129, 213, 132), text_size=size.small)
+table.cell(t, 0, 6, "Max Bear Candles", text_color=color.red, text_size=size.small)
+table.cell(t, 1, 6, str.tostring(maxBearCycleCandles), text_color=color.red, text_size=size.small)
+table.cell(t, 0, 7, "Max Bear % Dist", text_color=color.red, text_size=size.small)
+table.cell(t, 1, 7, str.tostring(overallMaxBearCycleDist, "#.#"), text_color=color.red, text_size=size.small)
+table.cell(t, 0, 8, "Avg Bear Candles", text_color=#ff7f7f, text_size=size.small)
+table.cell(t, 1, 8, str.tostring(avgBearCycleCandles, "#.#"), text_color=#ff7f7f, text_size=size.small)
+table.cell(t, 0, 9, "Avg Bear % Dist", text_color=#ff7f7f, text_size=size.small)
+table.cell(t, 1, 9, str.tostring(avgBearCycleDist, "#.#"), text_color=#ff7f7f, text_size=size.small)

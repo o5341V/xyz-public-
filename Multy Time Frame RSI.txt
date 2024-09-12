@@ -1,0 +1,135 @@
+//@version=5
+indicator(title="Multy Time Frame RSI", shorttitle="RSI", format=format.price, precision=2, timeframe="", timeframe_gaps=true)
+source = input(defval = close, title = "Source of RSI")
+
+
+len_mfi_10 = 10
+src_mfi_10 = source
+mf_10 = ta.rsi(src_mfi_10, len_mfi_10)
+
+var p_mfi_10 = 0
+
+if mf_10>= 0 and mf_10<10
+    p_mfi_10 := 0
+else if mf_10>= 10 and mf_10<20
+    p_mfi_10 := 10
+else if mf_10>= 20 and mf_10<30
+    p_mfi_10 := 20
+else if mf_10>= 30 and mf_10<40
+    p_mfi_10 := 30
+else if mf_10>= 40 and mf_10<50
+    p_mfi_10 := 40
+else if mf_10>= 50 and mf_10<60
+    p_mfi_10 := 50
+else if mf_10>= 60 and mf_10<70
+    p_mfi_10 := 60
+else if mf_10>= 70 and mf_10<80
+    p_mfi_10 := 70
+else if mf_10>= 80 and mf_10<90
+    p_mfi_10 := 80
+else if mf_10>= 90 and mf_10<100
+    p_mfi_10 := 90
+
+
+len_mfi_50 = 50
+src_mfi_50 = source
+mf_50 = ta.rsi(src_mfi_50, len_mfi_50)
+
+var p_mfi_50 = 0
+
+if mf_50>= 0 and mf_50<10
+    p_mfi_50 := 0
+else if mf_50>= 10 and mf_50<20
+    p_mfi_50 := 10
+else if mf_50>= 20 and mf_50<30
+    p_mfi_50 := 20
+else if mf_50>= 30 and mf_50<40
+    p_mfi_50 := 30
+else if mf_50>= 40 and mf_50<50
+    p_mfi_50 := 40
+else if mf_50>= 50 and mf_50<60
+    p_mfi_50 := 50
+else if mf_50>= 60 and mf_50<70
+    p_mfi_50 := 60
+else if mf_50>= 70 and mf_50<80
+    p_mfi_50 := 70
+else if mf_50>= 80 and mf_50<90
+    p_mfi_50 := 80
+else if mf_50>= 90 and mf_50<100
+    p_mfi_50 := 90
+
+
+
+len_mfi_100 = 100
+src_mfi_100 = source
+mf_100 = ta.rsi(src_mfi_100, len_mfi_100)
+
+var p_mfi_100 = 0
+
+if mf_100>= 0 and mf_100<10
+    p_mfi_100 := 0
+else if mf_100>= 10 and mf_100<20
+    p_mfi_100 := 10
+else if mf_100>= 20 and mf_100<30
+    p_mfi_100 := 20
+else if mf_100>= 30 and mf_100<40
+    p_mfi_100 := 30
+else if mf_100>= 40 and mf_100<50
+    p_mfi_100 := 40
+else if mf_100>= 50 and mf_100<60
+    p_mfi_100 := 50
+else if mf_100>= 60 and mf_100<70
+    p_mfi_100 := 60
+else if mf_100>= 70 and mf_100<80
+    p_mfi_100 := 70
+else if mf_100>= 80 and mf_100<90
+    p_mfi_100 := 80
+else if mf_100>= 90 and mf_100<100
+    p_mfi_100 := 90
+    
+len_mfi_200 = 200
+src_mfi_200 = source
+mf_200 = ta.rsi(src_mfi_200, len_mfi_200)
+
+var p_mfi_200 = 0
+
+if mf_200>= 0 and mf_200<10
+    p_mfi_200 := 0
+else if mf_200>= 10 and mf_200<20
+    p_mfi_200 := 10
+else if mf_200>= 20 and mf_200<30
+    p_mfi_200 := 20
+else if mf_200>= 30 and mf_200<40
+    p_mfi_200 := 30
+else if mf_200>= 40 and mf_200<50
+    p_mfi_200 := 40
+else if mf_200>= 50 and mf_200<60
+    p_mfi_200 := 50
+else if mf_200>= 60 and mf_200<70
+    p_mfi_200 := 60
+else if mf_200>= 70 and mf_200<80
+    p_mfi_200 := 70
+else if mf_200>= 80 and mf_200<90
+    p_mfi_200 := 80
+else if mf_200>= 90 and mf_200<100
+    p_mfi_200 := 90
+
+
+cat_mfi = input.bool(defval = true, title = "Show Catagorical RSI")
+
+plot(cat_mfi == false ? na : p_mfi_10, title = "MFI-10")
+plot(cat_mfi == false ? na : p_mfi_50, title = "MFI-50", color = color.red)
+plot(cat_mfi == false ? na : p_mfi_100, title = "MFI-100", color = color.yellow)
+plot(cat_mfi == false ? na : p_mfi_200, title = "MFI-200", color = color.green, linewidth = 2)
+
+plot(cat_mfi == true ? na : mf_10, title = "MFI-10")
+plot(cat_mfi == true ? na : mf_50, title = "MFI-50", color = color.red)
+plot(cat_mfi == true ? na : mf_100, title = "MFI-100", color = color.yellow)
+plot(cat_mfi == true ? na : mf_200, title = "MFI-200", color = color.green, linewidth = 2)
+
+l50 = hline(50)
+l40 = hline(40)
+l60 = hline(60)
+fill(l40, l60, color=color.rgb(126, 87, 194, 90))
+
+

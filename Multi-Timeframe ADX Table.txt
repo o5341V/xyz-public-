@@ -1,0 +1,80 @@
+//@version=5
+indicator("Multi-Timeframe ADX Table", overlay=true)
+
+var string GRP1       = '═══════════   Time Period   ═══════════'
+string textSizeInput  = input.string("tiny", "Text size", group = GRP1, options = ["tiny", "small", "normal", "large", "huge", "auto"])
+
+// ADX 기간 설정
+adxLength = input.int(14, title="ADX Smoothing")
+diLength = input.int(14, title="DI Length")
+
+// 사용자 정의 색상 입력
+colorLow = input.color(color.red, title="Color for ADX < 20")
+colorMediumLow = input.color(color.orange, title="Color for ADX 20 - 40")
+colorMediumHigh = input.color(color.yellow, title="Color for ADX 40 - 60")
+colorHigh = input.color(color.green, title="Color for ADX >= 60")
+colorHighlight = input.color(color.purple, title="Highlight Color for ADX >= 40")
+
+// ADX 계산 함수
+calculate_adx(length) =>
+    // DM 계산
+    up = ta.change(high)
+    down = -ta.change(low)
+    plusDM = na(up) ? na : (up > down and up > 0 ? up : 0)
+    minusDM = na(down) ? na : (down > up and down > 0 ? down : 0)
+    
+    // TR 계산
+    tr = ta.tr(true)
+    trSum = ta.rma(tr, length)
+    plusSum = ta.rma(plusDM, length)
+    minusSum = ta.rma(minusDM, length)
+    
+    plusDI = 100 * plusSum / trSum
+    minusDI = 100 * minusSum / trSum
+    
+    sumDI = plusDI + minusDI
+    dx = 100 * ta.rma(math.abs(plusDI - minusDI) / (sumDI == 0 ? 1 : sumDI), length)
+    dx
+
+// 각 시간 프레임의 ADX 값 요청
+get_adx(tf) =>
+    request.security(syminfo.tickerid, tf, calculate_adx(adxLength))
+
+// 각 시간 프레임의 ADX 계산
+tf1_adx = get_adx("1")
+tf5_adx = get_adx("5")
+tf15_adx = get_adx("15")
+tf30_adx = get_adx("30")
+tf60_adx = get_adx("60")
+tf240_adx = get_adx("240")
+tfD_adx = get_adx("D")
+
+// ADX 값에 따라 글자 색상 설정
+color_adx(adx) =>
+    adx < 20 ? colorLow : adx < 40 ? colorMediumLow : adx < 60 ? colorMediumHigh : colorHigh
+
+// 강조 색상 결정 함수
+highlight_color(adx) =>
+    adx >= 40 ? colorHighlight : na
+
+// 표 생성 (8 열, 3 행)
+var table adxTable = table.new(position.top_right, 8, 3, frame_color=color.black, border_width = 1, frame_width=1)
+
+// 첫 번째 실행 시 헤더 및 레이블 생성
+if (bar_index == 0)
+    table.cell(adxTable, 1, 0, "1 Minute", bgcolor=color.red, text_size = textSizeInput,  text_color=color.white)
+    table.cell(adxTable, 2, 0, "5 Minute", bgcolor=color.orange, text_size = textSizeInput,  text_color=color.white)
+    table.cell(adxTable, 3, 0, "15 Minute", bgcolor=color.yellow, text_size = textSizeInput,  text_color=color.black)
+    table.cell(adxTable, 4, 0, "30 Minute", bgcolor=color.green, text_size = textSizeInput,  text_color=color.white)
+    table.cell(adxTable, 5, 0, "1 Hour", bgcolor=color.blue, text_size = textSizeInput,  text_color=color.white)
+    table.cell(adxTable, 6, 0, "4 Hour", bgcolor=color.purple, text_size = textSizeInput,  text_color=color.white)
+    table.cell(adxTable, 7, 0, "Daily", bgcolor=color.black, text_size = textSizeInput,  text_color=color.white)
+
+// 매 바에서 ADX 값 업데이트
+table.cell(adxTable, 1, 2, str.tostring(tf1_adx, "#.##"), text_color=color_adx(tf1_adx), text_size = textSizeInput,  bgcolor=highlight_color(tf1_adx))
+table.cell(adxTable, 2, 2, str.tostring(tf5_adx, "#.##"), text_color=color_adx(tf5_adx), text_size = textSizeInput,  bgcolor=highlight_color(tf5_adx))
+table.cell(adxTable, 3, 2, str.tostring(tf15_adx, "#.##"), text_color=color_adx(tf15_adx), text_size = textSizeInput,  bgcolor=highlight_color(tf15_adx))
+table.cell(adxTable, 4, 2, str.tostring(tf30_adx, "#.##"), text_color=color_adx(tf30_adx), text_size = textSizeInput,  bgcolor=highlight_color(tf30_adx))
+table.cell(adxTable, 5, 2, str.tostring(tf60_adx, "#.##"), text_color=color_adx(tf60_adx), text_size = textSizeInput,  bgcolor=highlight_color(tf60_adx))
+table.cell(adxTable, 6, 2, str.tostring(tf240_adx, "#.##"), text_color=color_adx(tf240_adx), text_size = textSizeInput,  bgcolor=highlight_color(tf240_adx))
+table.cell(adxTable, 7, 2, str.tostring(tfD_adx, "#.##"), text_color=color_adx(tfD_adx), text_size = textSizeInput,  bgcolor=highlight_color(tfD_adx))
