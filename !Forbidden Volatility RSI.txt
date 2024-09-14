@@ -1,4 +1,5 @@
 //@version=5
+//© chervolino
 indicator(title="Forbidden Volatility RSI", shorttitle=" ッ ", format=format.price, precision=2, timeframe="", timeframe_gaps=true)
 
 // ——————————————————————————————————————————————————————— Inputs ——————————————————————————————————————————————————————————————————————————————————
