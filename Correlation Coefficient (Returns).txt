@@ -1,0 +1,27 @@
+//@version=5
+indicator("Correlation Coefficient (Returns)", shorttitle = "CC Returns", format = format.price, precision = 2)
+
+// Input data - plotted ticker plus ticker to calculate correlation with.
+symbolInput = input.symbol("GOOG", "Symbol", confirm = true)
+sourceInput = input.source(close, "Source")
+lengthInput = input.int(52, "Length")
+
+// This takes into account additional settings enabled on chart, e.g. dividend adjustment or extended session 
+adjustedSeries = ticker.modify(symbolInput)
+
+// Fetch data for both series
+currentData = request.security(syminfo.tickerid, timeframe.period, sourceInput)
+requestedData = request.security(adjustedSeries, timeframe.period, sourceInput)
+
+// Calculate returns for both series
+currentReturns = (currentData - currentData[1]) / currentData[1]
+requestedReturns = (requestedData - requestedData[1]) / requestedData[1]
+
+// Calculate correlation using returns
+correlation = ta.correlation(currentReturns, requestedReturns, lengthInput)
+
+plot(correlation, "Correlation", color = color.blue)
+hline(1)
+hline(0, color = color.new(color.gray, 50))
+hline(-1)
+barcolor(correlation <= 0.0 ? color.green : color.red)
