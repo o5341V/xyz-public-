@@ -220,8 +220,10 @@ method removeOldAddNewVol(float [] volprofilelast)=>
                  array.size(volprofile3) < 90000 ? volprofile3 :
                  array.size(volprofile4) < 90000 ? volprofile4 :
                  volprofile5
-    for x = 0 to (array.size(volprofilelast) > 0 ? array.size(volprofilelast) - 1 : na)
-        volprofile.push(volprofilelast.shift())
+    //for x = 0 to (array.size(volprofilelast) > 0 ? array.size(volprofilelast) - 1 : na)
+    //    volprofile.push(volprofilelast.shift())
+    if array.size(volprofilelast) > 0
+        array.concat(volprofile, array.copy(volprofilelast))
 
 // get the index for volume profile
 getIndex(Cls, val, profilestep)=>
@@ -306,11 +308,6 @@ method getvalarea(float [] this)=>
     ret.sort(order.ascending)
     ret
 
-method showprofile(matrix<float> this, float force, int x1coord, int y1coord,int x2coord, int y2coord, bgcol, bdcol)=>
-    this.push(box.new(x1coord, y1coord, 
-                      x2coord, y2coord,
-                      bgcolor = bgcol, border_width = 1, border_color = bdcol, force_overlay = true))
-
 method showVprofile(array <box> this, bool force, int x1coord, float y1coord,int x2coord, float y2coord, color bgcol, color bdcol)=>
     if force
         this.push(box.new(x1coord, y1coord, 
@@ -342,7 +339,7 @@ if bar_index_is_OK and showinchart and charttimeframeandtypeisok
                                            x2 = loc.get(x), y2 = lowest - heigth * 2, color =  chart.fg_color, 
                                            force_overlay = true))
 
-// show message if time frame or chart type is not ok 
+// show message if time frame is not ok or if chart type is not ok 
 if not charttimeframeandtypeisok and barstate.islast
     var label lab = na
     label.delete(lab)
@@ -384,7 +381,7 @@ if bar_index_is_OK and charttimeframeandtypeisok
         signmatrix.add_row(0)
         volmatrix.add_row(0)
         volprofilelast.removeOldAddNewVol()
-        // remove old data from matrixes
+        // remove old rows from matrixes
         if arrBoxes.rows() > maxcandles
             arrBoxes.remove_row(maxcandles)
             volBoxes.remove_row(maxcandles)
@@ -429,7 +426,7 @@ if bar_index_is_OK and charttimeframeandtypeisok
         // keep last closing price
         float lastsign = close[1] >= open[1] ? 1 : -1
         age = bar_index
-        // get data for each column
+        // get & analyze & process data for each column
         for cc = 0 to cwidth - 1
             [arrCclose, arrCopen, arrCvol] = getTheCandle(cclose, step, cc)
             
@@ -473,7 +470,7 @@ if bar_index_is_OK and charttimeframeandtypeisok
             for col = 0 to vols.size() - 1
                 arrBoxes.setcolor(row, col * 3 + 2, (math.sign(sgn.get(col)) > 0 ? maxposvolume : maxnegvolume), vols.get(col))
        
-    // draw candles boxes and vol boxes
+    // draw candles boxes and volume boxes
     float labelincrease = 0
     float maxvolumebar = volBoxes.max() - volBoxes.min()
     maxvolumebar *=(showcumvolume ? 3 : 1)
@@ -547,16 +544,16 @@ if bar_index_is_OK and charttimeframeandtypeisok
                                               x2 = bar_index - row * (cwidth + 1) + 1, y2 = closeLines.get(row - 1, 0), 
                                               width = cpricewidth, color = cpricecolor))
 
-    // show volume profile if enabled and Location is absolute
+    // show volume profile if enabled and if Location is absolute
     float poclevel = 0
     volumeprofile = array.new_float(profilerow * 2, 0)
-    if barstate.islast and showprofile and totalshowncandles > 1 and (location == locChoice.absolute or Vforceoverlay)
+    if barstate.islast and showprofile and totalshowncandles > 0 and (location == locChoice.absolute or Vforceoverlay)
         // find lowest because we may not get all candles
         lowest := close
         for x = 0 to totalshowncandles - 1
             lowest := math.min(lowest, low[x])
-
-        // get data from all volume profile arrays
+        
+        // get data from all volume profile arrays, create volume profile matrix
         volumeprofile.getprofile(volprofile1, profilestep)
         volumeprofile.getprofile(volprofile2, profilestep)
         volumeprofile.getprofile(volprofile3, profilestep)
@@ -583,12 +580,12 @@ if bar_index_is_OK and charttimeframeandtypeisok
                     boxw := 1
                 else
                     boxw1 := 1
-            allBoxes.showVprofile(Vforceoverlay and maxcandles > 1, bar_index + 2,  lowest + profilestep * (x + 1), 
+            allBoxes.showVprofile(Vforceoverlay and totalshowncandles > 1, bar_index + 2,  lowest + profilestep * (x + 1), 
                                   bar_index + 2 + boxw, lowest + profilestep * x,
                                   colup, chart.bg_color)
             
             
-            allBoxes.showVprofile(Vforceoverlay and maxcandles > 1, bar_index + 2 + boxw,        lowest + profilestep * (x + 1), 
+            allBoxes.showVprofile(Vforceoverlay and totalshowncandles > 1, bar_index + 2 + boxw,        lowest + profilestep * (x + 1), 
                                   bar_index + 2 + boxw1, lowest + profilestep * x,
                                   coldn, chart.bg_color)
             
@@ -623,7 +620,7 @@ if bar_index_is_OK and charttimeframeandtypeisok
                                  'Number of Rows', str.tostring(cheight), 
                                  'POC Level', str.tostring(poclevel, format.mintick))
         
-        // fill the cells
+        // fill the table cells
         for y = 0 to (showprofile and poclevel > 0 ? 4 : 3)
             for x = 0 to 1
                 infotable.setcell(x, y + 1, dataToShow.get(y * 2 + x), y % 2, x)
