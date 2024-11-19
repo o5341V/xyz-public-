@@ -95,6 +95,7 @@ simple int    int_1             = input.int(14, "Int 1", group = G1, inline = "I
 simple int    int_2             = input.int(14, "Int 2", group = G1, inline = "I")
 
 // Table Settings
+simple string table_mode        = input.string("FULL", "Table Mode", options = ["FULL", "Summary"], group = G2)
 simple string textsize          = input.string("medium", title="Text Size", options=["tiny", "small", "medium", "large"], group = G2)
 simple bool   hide_head         = input.bool(false, "Hide Header", group = G2)
 simple bool   hide_inps         = input.bool(false, "Hide Inputs", group = G2)
@@ -427,6 +428,22 @@ f_get_input(trend_indicator) =>
         "RSI (EMA)"                             => "Int 1 for RSI length and Int 2 for EMA length"
         "CCI"                                   => "Int 1 for CCI length"
         "Fisher"                                => "Int 1 for Fisher length"
+
+// Function to find top N assets based on rank, including ties
+f_top_assets_with_ties(ranks, assets, num_max) =>
+    var string[] top_assets = array.new_string(40)  // Array to store assets with ranks (max 40)
+    int asset_count = 0  // To keep track of how many assets are added
+    
+    for rank_num = 1 to 40  // Loop over possible ranks, starting from 1
+        for j = 0 to (used_assets - 1)  // Loop through assets
+            if array.get(ranks, j) == rank_num
+                array.set(top_assets, asset_count, array.get(assets, j))  // Add asset with current rank
+                asset_count := asset_count + 1
+                if asset_count >= num_max
+                    break
+        if asset_count >= num_max
+            break
+    array.slice(top_assets, 0, asset_count)  // Return only the used part of the array
 //}
 
 // - - - - - TABLE - - - - - //{
@@ -437,47 +454,102 @@ var string fontSize         = switch textsize
     "large"             => size.large
 
 // Automatically extending table based on the number of used assets
-var table table = table.new(position.bottom_center, 50, 50, color.new(color.black, 100), color.white, 3, color.white, 1)
+var table table = table.new(
+ table_mode == "FULL" ? position.bottom_center : position.bottom_left,
+ 50, 50, color.new(color.black, 100), color.white, 3, color.white, 1)
+
+var table top_table = table.new(
+ position.bottom_right, 50, 50, color.new(color.black, 100), color.white, 3, color.white, 1)
 
 if barstate.islast
-    if not hide_head
-        table.cell(table, 0, 0, "Universal Ratio Trend Matrix", text_color = color.white, bgcolor = #010c3b, text_size = fontSize)
-        table.merge_cells(table, 0, 0, used_assets + 3, 0)
 
-    if not hide_inps
-        table.cell(table, 0, 1, 
-         text = "Inputs: You are using " + str.tostring(trend_indicator) + ", which takes: " + str.tostring(f_get_input(trend_indicator)), 
-         text_color = color.white, text_size = fontSize), table.merge_cells(table, 0, 1, used_assets + 3, 1)
+    if table_mode == "FULL"
+        // Header
+        if not hide_head
+            table.cell(table, 0, 0, "Universal Ratio Trend Matrix", text_color = color.white, bgcolor = #010c3b, text_size = fontSize)
+            table.merge_cells(table, 0, 0, used_assets + 3, 0)
 
+        // Inputs
+        if not hide_inps
+            table.cell(table, 0, 1, 
+                 text = "Inputs: You are using " + str.tostring(trend_indicator) + ", which takes: " + str.tostring(f_get_input(trend_indicator)), 
+                 text_color = color.white, text_size = fontSize), table.merge_cells(table, 0, 1, used_assets + 3, 1)
+
+    // Assets Cell
     table.cell(table, 0, 2, "Assets", text_color = color.white, text_size = fontSize, bgcolor = #010c3b)
 
+    // Asset Lists
     for x = 0 to (used_assets - 1)
-        table.cell(table, x + 1, 2, text = str.tostring(array.get(assets, x)), text_color = color.white, bgcolor = #010c3b, text_size = fontSize)
+        // Horizontal
+        if table_mode == "FULL"
+            table.cell(table, x + 1, 2, text = str.tostring(array.get(assets, x)), text_color = color.white, bgcolor = #010c3b, text_size = fontSize)
+        // Vertical    
         table.cell(table, 0, x + 3, text = str.tostring(array.get(assets, x)), text_color = color.white, bgcolor = f_asset_col(array.get(ranks, x)), text_size = fontSize)
 
-    for r = 0 to (used_assets - 1)
-        for c = 0 to (used_assets - 1)
-            table.cell(table, c + 1, r + 3, text = str.tostring(array.get(combined_array, c + (r * 40))), 
-             text_color = hl_type == "Text" ? f_get_col(array.get(combined_array, c + (r * 40))) : color.white, text_size = fontSize,
-             bgcolor = hl_type == "Background" ? f_get_col(array.get(combined_array, c + (r * 40))) : na)
+    // Trend Scores
+    if table_mode == "FULL"
+        for r = 0 to (used_assets - 1)
+            for c = 0 to (used_assets - 1)
+                table.cell(table, c + 1, r + 3, text = str.tostring(array.get(combined_array, c + (r * 40))), 
+                     text_color = hl_type == "Text" ? f_get_col(array.get(combined_array, c + (r * 40))) : color.white, text_size = fontSize,
+                     bgcolor = hl_type == "Background" ? f_get_col(array.get(combined_array, c + (r * 40))) : na)
 
-    for x = 0 to (used_assets - 1)
-        table.cell(table, x + 1, x + 3, "", bgcolor = #010c3b)
+    // Separators
+    if table_mode == "FULL"
+        for x = 0 to (used_assets - 1)
+            table.cell(table, x + 1, x + 3, "", bgcolor = #010c3b)
 
     table.cell(table, used_assets + 1, 2, "", bgcolor = #010c3b)
 
     for x = 0 to (used_assets - 1)
         table.cell(table, used_assets + 1, x + 3, "==>", text_color = color.white)
 
+
+    // SUM and RANK cells
     table.cell(table, used_assets + 2, 2, "SUM", text_color = color.white, text_size = fontSize, bgcolor = #010c3b)
     table.cell(table, used_assets + 3, 2, "RANK", text_color = color.white, text_size = fontSize, bgcolor = #010c3b)
+
+    // SUM and RANK values
     for x = 0 to (used_assets - 1)
         table.cell(table, used_assets + 2, x + 3, 
-         text = str.tostring(array.get(array_sums, x)), 
-         text_color = color.white, text_size = fontSize, 
-         bgcolor = f_highlight_sum(array.get(array_sums, x), array.get(ranks, x)))
+             text = str.tostring(array.get(array_sums, x)), 
+             text_color = color.white, text_size = fontSize, 
+             bgcolor = f_highlight_sum(array.get(array_sums, x), array.get(ranks, x)))
         table.cell(table, used_assets + 3, x + 3, 
-         text = str.tostring(array.get(ranks, x)), 
-         text_color = color.white, text_size = fontSize, 
-         bgcolor = f_highlight_rank(array.get(ranks, x)))
+             text = str.tostring(array.get(ranks, x)), 
+             text_color = color.white, text_size = fontSize, 
+             bgcolor = f_highlight_rank(array.get(ranks, x)))
+
+    // Second Table
+    if table_mode == "Summary"
+
+        var string[] top_assets = f_top_assets_with_ties(ranks, assets, hl_assets)
+    
+        // Title row with the total number of assets
+        table.cell(top_table, 0, 0, "Top Assets by Rank (" + str.tostring(used_assets) + ")", text_color = color.white, bgcolor = #010c3b, text_size = fontSize)
+        table.merge_cells(top_table, 0, 0, 2, 0)  // Adjusted to span 3 columns
+
+        // Headers for Rank, Asset, and Sum columns
+        table.cell(top_table, 0, 1, "RANK", text_color = color.white, text_size = fontSize, bgcolor = #010c3b)
+        table.cell(top_table, 1, 1, "Asset", text_color = color.white, text_size = fontSize, bgcolor = #010c3b)
+        table.cell(top_table, 2, 1, "SUM", text_color = color.white, text_size = fontSize, bgcolor = #010c3b)  // New column for Sum
+
+        // Populate the table with top assets, their ranks, and their corresponding SUM values
+        int current_rank = 1
+        for i = 0 to (array.size(top_assets) - 1)
+            table.cell(top_table, 0, i + 2, text = str.tostring(current_rank), text_color = color.white, bgcolor = #010c3b, text_size = fontSize)
+            table.cell(top_table, 1, i + 2, text = array.get(top_assets, i), text_color = color.white, bgcolor = #106603, text_size = fontSize)
+
+            // Fetch the SUM corresponding to the asset's index and display it
+            int asset_index = array.indexof(assets, array.get(top_assets, i))  // Get the index of the asset in the original assets array
+            if asset_index != -1  // Ensure the asset exists in the array
+                table.cell(top_table, 2, i + 2, text = str.tostring(array.get(array_sums, asset_index)), text_color = color.white, bgcolor = #010c3b, text_size = fontSize)
+
+            // Increment rank only if the next asset exists and has a different rank (to handle ties)
+            if (i + 1) < array.size(top_assets) and array.get(ranks, i) != array.get(ranks, i + 1)
+                current_rank := current_rank + 1
+
+
 //}
+
+
